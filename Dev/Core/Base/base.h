@@ -118,8 +118,8 @@ extern "C" {
 #define JOIN_(_X, _Y)				_X##_Y
 #define JOIN(_X, _Y)				JOIN_(_X, _Y)
 
-#define SEQ_N_()			            62, 61, 60, 			\
-    59, 58, 57, 56, 55, 54, 53, 52, 51, 50,				\
+#define SEQ_N_()			            63, 62, 61, 60, 			\
+    59, 58, 57, 56, 55, 54, 53, 52, 51, 50,				                \
     49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 			\
     39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 			\
     29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 			\
@@ -137,7 +137,7 @@ extern "C" {
 #define GET_NUM_ARGS_(...) 			GET_NUM_ARGS__(__VA_ARGS__)
 #define GET_NUM_ARGS(...) 			GET_NUM_ARGS_(_0, ##__VA_ARGS__, SEQ_N_())
 
-#define SEQ_1_()			     0, 0, 0,					\
+#define SEQ_1_()			     0, 0, 0, 0,					\
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 					\
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 					\
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 					\
@@ -1291,6 +1291,50 @@ typedef struct { u32 x, y, z, w; } 	u32uvec4;
 typedef struct { u64 x, y; } 		u64uvec2;
 typedef struct { u64 x, y, z; } 	u64uvec3;
 typedef struct { u64 x, y, z, w; } 	u64uvec4;
+
+typedef f32                             f32mat4[16];
+typedef f32                             f32mat3[9];
+typedef f32                             f32mat2[4];
+
+typedef f64                             f64mat4[16];
+typedef f64                             f64mat3[9];
+typedef f64                             f64mat2[4];
+
+typedef f128                            f128mat4[16];
+typedef f128                            f128mat3[9];
+typedef f128                            f128mat2[4];
+
+typedef i8                              i8mat4[16];
+typedef i8                              i8mat3[9];
+typedef i8                              i8mat2[4];
+
+typedef i16                             i16mat4[16];
+typedef i16                             i16mat3[9];
+typedef i16                             i16mat2[4];
+
+typedef i32                             i32mat4[16];
+typedef i32                             i32mat3[9];
+typedef i32                             i32mat2[4];
+
+typedef i64                             i64mat4[16];
+typedef i64                             i64mat3[9];
+typedef i64                             i64mat2[4];
+
+typedef u8                              u8mat4[16];
+typedef u8                              u8mat3[9];
+typedef u8                              u8mat2[4];
+
+typedef u16                             u16mat4[16];
+typedef u16                             u16mat3[9];
+typedef u16                             u16mat2[4];
+
+typedef u32                             u32mat4[16];
+typedef u32                             u32mat3[9];
+typedef u32                             u32mat2[4];
+
+typedef u64                             u64mat4[16];
+typedef u64                             u64mat3[9];
+typedef u64                             u64mat2[4];
 
 /* ---------- Thread Helpers ---------- */
 

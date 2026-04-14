@@ -43,7 +43,7 @@ typedef enum {
  #endif
 } ENN_EVENT_TYPE;
 
-typedef struct {
+typedef struct Event {
 	EventID 	id;
 	ENN_EVENT_TYPE 	type;
 	void* 		data;
