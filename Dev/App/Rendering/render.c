@@ -127,12 +127,19 @@ Sprite render_sprite_create(Image* texture, i32vec2 texture_top_left, i32vec2 te
         };
 }
 
-void render_proj_set(const f32* proj_matrix) {
+void render_proj_set(f32mat4 proj_matrix) {
         DEBUG_TRACE();
+        
+        if (memcmp(proj_matrix, global_render.proj_matrix, (sizeof (f32mat4)))== 0) {
+                DEBUG_UNTRACE();
+                return ;
+        }
+
         render_buff_draw();
 
         glUseProgram(global_render.shader);
         glUniformMatrix4fv(global_render.proj_matrix_location, 1, GL_TRUE, proj_matrix);
+        memcpy(global_render.proj_matrix, proj_matrix, (sizeof (f32mat4)));
         DEBUG_UNTRACE();
 }
 

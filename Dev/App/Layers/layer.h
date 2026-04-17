@@ -34,4 +34,10 @@ ENNDEF_PUBLIC f32vec2 screen_to_ndc(f32vec2 screen) {
         };
 }
 
+extern struct GlobalState {
+        bool is_key_down[GLFW_KEY_LAST];
+        bool is_button_down[GLFW_MOUSE_BUTTON_LAST];
+        f64vec2 mouse_pos;
+} global_state;
+
 #endif

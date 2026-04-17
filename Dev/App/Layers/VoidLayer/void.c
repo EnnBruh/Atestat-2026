@@ -3,6 +3,7 @@
 LayerID void_layer_id;
 
 i32vec4 window_viewport;
+struct GlobalState global_state;
 
 void void_layer_init(void) {
         i32vec2 window_dim = window_get_framebuff_dim();
@@ -95,6 +96,7 @@ void void_layer_on_event(Event* event) {
                 case ENN_INPUT_KEY_EVENT:
                 {
                         struct { i32 key, action; }* data = event -> data;
+                        global_state.is_key_down[data -> key] = (data -> action == GLFW_PRESS || data -> action == GLFW_REPEAT);
                         if (data -> key == GLFW_KEY_F11 && data -> action == GLFW_PRESS) {
                                 window_flip_fullscreen();
                         }
@@ -103,7 +105,14 @@ void void_layer_on_event(Event* event) {
                 case ENN_INPUT_MOUSE_MOVE_EVENT:
                 {
                         f64vec2* data = event -> data;
+                        global_state.mouse_pos = *data;
                         sprintf(mouse_info, "%" PRIi32 " , %" PRIi32, (i32)data -> x, (i32)data -> y);
+                        break;
+                }
+                case ENN_INPUT_MOUSE_BUTTON_EVENT:
+                {
+                        struct { i32 button, action; }* data = event -> data;
+                        global_state.is_button_down[data -> button] = (data -> action == GLFW_PRESS || data -> action == GLFW_REPEAT);
                         break;
                 }
                 default: break;
