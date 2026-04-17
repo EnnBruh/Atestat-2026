@@ -750,17 +750,21 @@ LayerID window_push_layer(Layer* layer) {
         layer -> init();
         vector_push_back(_core_state._window_main.layer_stack, *layer);
 	vector_sort(_core_state._window_main.layer_stack, __layer_compare, _core_state._window_main.layer_stack.start, _core_state._window_main.layer_stack.end);
+        if (!layer -> active) ++_core_state._window_main.num_inactive_layers;
 
         DEBUG_UNTRACE();
-        return _layer_id_generator - 1;
+        return layer -> id;
 }
 
 void layer_set_active(LayerID id) {
         DEBUG_TRACE();
         for (i32 i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end; ++i)
                 if (id == _core_state._window_main.layer_stack.data[i].id) {
-                        _core_state._window_main.layer_stack.data[i].active = true;
-                        vector_sort(_core_state._window_main.layer_stack, __layer_compare, _core_state._window_main.layer_stack.start, _core_state._window_main.layer_stack.end);
+                        if (!_core_state._window_main.layer_stack.data[i].active) {
+                                _core_state._window_main.layer_stack.data[i].active = true;
+                                vector_sort(_core_state._window_main.layer_stack, __layer_compare, _core_state._window_main.layer_stack.start, _core_state._window_main.layer_stack.end);
+                                --_core_state._window_main.num_inactive_layers;
+                        }
                         DEBUG_UNTRACE();
                         return;
                 }
@@ -771,8 +775,11 @@ void layer_set_inactive(LayerID id) {
         DEBUG_TRACE();
         for (i32 i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end; ++i)
                 if (id == _core_state._window_main.layer_stack.data[i].id) {
-                        _core_state._window_main.layer_stack.data[i].active = false;
-                        vector_sort(_core_state._window_main.layer_stack, __layer_compare, _core_state._window_main.layer_stack.start, _core_state._window_main.layer_stack.end);
+                        if (_core_state._window_main.layer_stack.data[i].active) {
+                                _core_state._window_main.layer_stack.data[i].active = false;
+                                vector_sort(_core_state._window_main.layer_stack, __layer_compare, _core_state._window_main.layer_stack.start, _core_state._window_main.layer_stack.end);
+                                ++_core_state._window_main.num_inactive_layers;
+                        }
                         DEBUG_UNTRACE();
                         return;
                 }

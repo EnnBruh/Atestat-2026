@@ -24,6 +24,12 @@ signed main(void) {
 
         window_push_layer(&(Layer) {
                 .active = true,
+                .priority = 100,
+                LAYER_ASSIGN(debug)
+        });
+
+        window_push_layer(&(Layer) {
+                .active = true,
                 .priority = 1,
                 LAYER_ASSIGN(game)
         });

@@ -1,16 +1,16 @@
 #include "Layers/GameLayer/map.h"
 
 struct MapView map_view = {
-        .visible_pixels = { .x = 160, .y = 90 },
-        .camera_offset = { .x = 10, .y = 0 },
+        .visible_pixels = { .x = 320, .y = 180 },
+        .camera_offset = { .x = 0, .y = 0 },
         .zoom = 1.0
 };
 
 
 void map_render(void) {
         render_proj_set((f32mat4) {
-                2 / map_view.visible_pixels.x * map_view.zoom, 0, 0, -(2 * map_view.camera_offset.x ) / map_view.visible_pixels.x * map_view.zoom,
-                0, -(2 / map_view.visible_pixels.y * map_view.zoom), 0, (2 * map_view.camera_offset.y) / map_view.visible_pixels.y * map_view.zoom,
+                2 / map_view.visible_pixels.x * map_view.zoom, 0, 0, -(2 * map_view.camera_offset.x ) / map_view.visible_pixels.x * map_view.zoom - 1.0,
+                0, -(2 / map_view.visible_pixels.y * map_view.zoom), 0, (2 * map_view.camera_offset.y) / map_view.visible_pixels.y * map_view.zoom + 1.0,
                 0, 0, -1, 0,
                 0, 0, 0, 1
         });
@@ -21,6 +21,22 @@ void map_render(void) {
         render_rectangle_push(
                 top_left, bott_right,
                 ENN_MAP_BCKG_COLOR);
+
+        for (i32 x = floor(top_left.x / ENN_MAP_GRID_CELL_SIZE) * ENN_MAP_GRID_CELL_SIZE; x <= bott_right.x; x += ENN_MAP_GRID_CELL_SIZE) {
+                render_line_push(
+                        (f32vec2) { x + ENN_MAP_GRID_CELL_SIZE / 2, top_left.y },
+                        (f32vec2) { x + ENN_MAP_GRID_CELL_SIZE / 2, bott_right.y },
+                        ENN_MAP_GRID_LINE_WIDTH, ENN_MAP_GRID_SECOND_COLOR);
+
+        }
+
+        for (i32 y = floor(top_left.y / ENN_MAP_GRID_CELL_SIZE) * ENN_MAP_GRID_CELL_SIZE; y <= bott_right.y; y += ENN_MAP_GRID_CELL_SIZE) {
+                render_line_push(
+                        (f32vec2) { top_left.x, y + ENN_MAP_GRID_CELL_SIZE / 2 },
+                        (f32vec2) { bott_right.x, y + ENN_MAP_GRID_CELL_SIZE / 2 },
+                        ENN_MAP_GRID_LINE_WIDTH, ENN_MAP_GRID_SECOND_COLOR);
+
+        }
 
         for (i32 x = floor(top_left.x / ENN_MAP_GRID_CELL_SIZE) * ENN_MAP_GRID_CELL_SIZE; x <= bott_right.x; x += ENN_MAP_GRID_CELL_SIZE) {
                 render_line_push(
@@ -42,11 +58,23 @@ void map_on_event(Event* event) {
                 case ENN_INPUT_MOUSE_SCROLL_EVENT:
                 {
                         f64* offset = event -> data;
+                        f32vec2 before = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+
                         if (*offset > 0.0) {
                                 if (map_view.zoom < ENN_MAP_ZOOM_MAX) map_view.zoom *= ENN_MAP_ZOOM_PLUS;
                         } else {
                                 if (map_view.zoom > ENN_MAP_ZOOM_MIN) map_view.zoom *= ENN_MAP_ZOOM_MINUS;
                         }
+
+                        f32vec2 after = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+
+                        map_view.camera_offset.x += (before.x - after.x);
+                        map_view.camera_offset.y += (before.y - after.y);
+                        break;
+                }
+                case ENN_INPUT_MOUSE_MOVE_EVENT:
+                {
+                        break;
                 }
                 default: break;
         }

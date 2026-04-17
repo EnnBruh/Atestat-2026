@@ -304,6 +304,7 @@ typedef struct Window {
 	byte 		flags;
 
 	vector(Layer) 	layer_stack;
+        i32             num_inactive_layers;
 #       ifndef ENN_USE_CUSTOM_RENDERING
                 struct DefaultRenderer  renderer;
                 vector(Font)            fonts;

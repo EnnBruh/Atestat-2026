@@ -1,0 +1,51 @@
+#include "Layers/layer.h"
+
+LayerID debug_layer_id;
+
+void debug_layer_init(void) {
+}
+
+void debug_layer_term(void) {
+
+}
+
+static char fps_buff[32];
+static char vertex_info[64];
+static char mouse_info[64];
+void debug_layer_on_render(void) {
+        render_proj_set((f32mat4) {
+                1, 0, 0, 0,
+                0, -1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+        });
+
+        render_text_push(
+                (f32vec2) { -0.95, -0.95 },
+                fps_buff, 0xFFFFFFFF, 0.05);
+
+        render_text_push(
+                (f32vec2) { -0.95, -0.85 },
+                mouse_info, 0xFFFFFFFF, 0.05);
+
+        sprintf(vertex_info, "%" PRIi32 " VERTICES DRAWN", global_render.buff_size);
+
+        render_text_push(
+                (f32vec2) { -0.95, -0.9 },
+                vertex_info, 0xFFFFFFFF, 0.05);
+
+        render_buff_draw();
+}
+
+void debug_layer_on_update(f64 dt) {
+        static f64 last_refresh = 0.0;
+        last_refresh += dt;
+
+        if (last_refresh >= 0.5) {
+                sprintf(fps_buff, "FRAMETIME: %lf | FPS: %" PRIi32, dt, (i32)(1.0 / dt));
+                last_refresh = 0.0;
+        }
+}
+
+void debug_layer_on_event(Event* event) {
+}

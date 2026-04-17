@@ -148,7 +148,7 @@ void core_run(void) {
         		_core_state._time_delta = _core_state._time_current - last_frame;
         		last_frame = _core_state._time_current;
 
-                        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active; ++i)
+                        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers; ++i)
                                         _core_state._window_main.layer_stack.data[i].on_update(_core_state._time_delta);
 
 #                       ifdef ENN_FOCUS_WINDOW_OPTIMIZATION
@@ -156,7 +156,7 @@ void core_run(void) {
 #                       endif
                                 glClear(GL_COLOR_BUFFER_BIT);
 
-                                for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active; ++i)
+                                for (i = _core_state._window_main.layer_stack.end - 1 - _core_state._window_main.num_inactive_layers; i >= _core_state._window_main.layer_stack.start; --i)
                                         _core_state._window_main.layer_stack.data[i].on_render();
 
                                 glfwSwapBuffers(_core_state._window_main.handle);

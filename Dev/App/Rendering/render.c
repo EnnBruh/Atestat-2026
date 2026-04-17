@@ -130,10 +130,10 @@ Sprite render_sprite_create(Image* texture, i32vec2 texture_top_left, i32vec2 te
 void render_proj_set(f32mat4 proj_matrix) {
         DEBUG_TRACE();
         
-        if (memcmp(proj_matrix, global_render.proj_matrix, (sizeof (f32mat4)))== 0) {
-                DEBUG_UNTRACE();
-                return ;
-        }
+        // if (memcmp(proj_matrix, global_render.proj_matrix, (sizeof (f32mat4)))== 0) {
+        //         DEBUG_UNTRACE();
+        //         return ;
+        // }
 
         render_buff_draw();
 

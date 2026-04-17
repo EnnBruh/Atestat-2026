@@ -12,6 +12,10 @@ void game_layer_term(void) {
 
 void game_layer_on_render(void) {
         map_render();
+        render_rectangle_push(
+                (f32vec2) { -20, -20 },
+                (f32vec2) { 20, 20 },
+                0xFF0000FF);
 }
 
 void game_layer_on_update(f64 dt) {
