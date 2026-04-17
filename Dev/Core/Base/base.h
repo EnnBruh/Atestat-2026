@@ -493,11 +493,11 @@ extern "C" {
     } while (0)
 #endif
 
-    typedef enum {
-        ENN_EQUAL	= 0x0,
-        ENN_BIGGER	= 0x1,
-        ENN_SMALLER	= 0x2,
-        ENN_ERR 	= 0x3
+    typedef enum ENN_CMP {
+        ENN_EQUAL	= 0x1,
+        ENN_BIGGER	= 0x2,
+        ENN_SMALLER	= 0x3,
+        ENN_ERR 	= 0x0
     } ENN_CMP;
 
 #ifndef max
@@ -1565,7 +1565,7 @@ ENNDEF_PRIVATE void     datafile_destroy(DataFile* df);
 ENNDEF_PRIVATE void     datafile_read(DataFile* df, const char* filepath);
 ENNDEF_PRIVATE void     datafile_write(DataFile* df, const char* filepath);
 
-ENNDEF_PRIVATE i32 	datafile_write_precalc(DataFile* df);
+ENNDEF_PRIVATE i32 	    datafile_write_precalc(DataFile* df);
 
 ENNDEF_PRIVATE void     datafile_read_abstract(DataFile* df, const char* buff);
 ENNDEF_PRIVATE void     datafile_write_abstract(DataFile* df, const char* buff);

@@ -2,6 +2,7 @@
 #define LAYERS_H
 
 #include "core.h"
+#include "Rendering/render.h"
 
 #define LAYER_DEFINE(name)                                                            \
         extern LayerID EXPAND(JOIN(name, _layer_id));                                 \
@@ -18,9 +19,19 @@
         .on_update = EXPAND(JOIN(name, _layer_on_update)),                            \
         .on_event  = EXPAND(JOIN(name, _layer_on_event))
 
+
+LAYER_DEFINE(void);
 LAYER_DEFINE(menu);
 LAYER_DEFINE(settings);
 LAYER_DEFINE(game);
 LAYER_DEFINE(blur);
+
+extern i32vec4 window_viewport;
+ENNDEF_PUBLIC f32vec2 screen_to_ndc(f32vec2 screen) {
+        return (f32vec2) {
+                .x = (screen.x - window_viewport.x) / ((f32)(window_viewport.z) * 0.5) - 1.0,
+                .y = (screen.y - window_viewport.y) / ((f32)(window_viewport.w) * 0.5) - 1.0
+        };
+}
 
 #endif
