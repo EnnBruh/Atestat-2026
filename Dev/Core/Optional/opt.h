@@ -35,11 +35,11 @@ typedef enum {
 	ENN_INPUT_MOUSE_BUTTON_EVENT,
 	ENN_INPUT_MOUSE_SCROLL_EVENT,
 	ENN_INPUT_MOUSE_MOVE_EVENT,
- #ifdef ENN_USER_DEFINED_EVENTS
 	ENN_INPUT_TEXT_EVENT,
-        ENN_USER_DEFINED_EVENTS
+ #ifdef ENN_USER_DEFINED_EVENTS
+        ENN_USER_DEFINED_EVENTS,
  #else
-	ENN_INPUT_TEXT_EVENT
+        ENN_LAST_EVENT
  #endif
 } ENN_EVENT_TYPE;
 
@@ -66,6 +66,22 @@ typedef struct Layer {
 	void (*on_update)(f64 dt);
 	void (*on_render)(void);
 } Layer;
+
+#define LAYER_DEFINE(name)                                                            \
+        extern LayerID EXPAND(JOIN(name, _layer_id));                                 \
+        ENNDEF_PRIVATE void EXPAND(JOIN(name, _layer_init))(void);                    \
+        ENNDEF_PRIVATE void EXPAND(JOIN(name, _layer_term))(void);                    \
+        ENNDEF_PRIVATE void EXPAND(JOIN(name, _layer_on_render))(void);               \
+        ENNDEF_PRIVATE void EXPAND(JOIN(name, _layer_on_event))(Event* event);        \
+        ENNDEF_PRIVATE void EXPAND(JOIN(name, _layer_on_update))(f64 dt)             
+
+#define LAYER_ASSIGN(name)                                                            \
+        .init = EXPAND(JOIN(name, _layer_init)),                                      \
+        .term = EXPAND(JOIN(name, _layer_term)),                                      \
+        .on_render = EXPAND(JOIN(name, _layer_on_render)),                            \
+        .on_update = EXPAND(JOIN(name, _layer_on_update)),                            \
+        .on_event  = EXPAND(JOIN(name, _layer_on_event))
+
 
 ENNDEF_PUBLIC ENN_CMP __layer_compare(Layer a, Layer b) {
         if (!a.active) return ENN_BIGGER;

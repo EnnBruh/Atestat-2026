@@ -11,14 +11,14 @@ signed main(void) {
                 .height = 600,
                 .is_resizable = true,
                 .has_msaa = true,
-                .has_vsync = true 
+                .has_vsync = false
         });
 
         render_init();
 
         window_push_layer(&(Layer) {
                 .active = true,
-                .priority = 0,
+                .priority = 10,
                 LAYER_ASSIGN(void)
         });
 
@@ -30,8 +30,13 @@ signed main(void) {
 
         window_push_layer(&(Layer) {
                 .active = true,
-                .priority = 1,
+                .priority = 2,
                 LAYER_ASSIGN(game)
+        });
+        window_push_layer(&(Layer) {
+                .active = true,
+                .priority = 1,
+                LAYER_ASSIGN(map)
         });
 
         core_run();

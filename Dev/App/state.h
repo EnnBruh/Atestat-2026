@@ -3,11 +3,6 @@
 
 #include "core.h"
 
-typedef enum ENN_STATE {
-        ENN_NOTHING,
-        ENN_PANNING,
-} ENN_STATE;
-
 extern struct GlobalState {
         bool is_key_down[GLFW_KEY_LAST];
         bool is_button_down[GLFW_MOUSE_BUTTON_LAST];
