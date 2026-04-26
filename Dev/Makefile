@@ -4,7 +4,7 @@ $(info $(SHELL))
 build: build_debug
 
 CC = gcc
-CFLAGS = -Wall -Werror -Wpedantic -std=gnu99 
+CFLAGS = -Wall -Werror -Wpedantic -std=gnu99
 
 CORE_DIR = Core
 DEP_DIR  = Dep
@@ -45,10 +45,10 @@ ALL_INC = -iquote $(DEP_INC) -iquote $(CORE_INC) -iquote $(APP_INC)
 # ALL_LIB = $(CORE_LIB) $(DEP_LIB)
 
 build_debug: $(CORE_LIB)
-	$(CC) $(CFLAGS) -static -o $(TARGET) $(ALL_INC) $(ALL_SRC) $(CORE_LIB) $(DEP_LIB)
+	$(CC) $(CFLAGS) -O0 -static -o $(TARGET) $(ALL_INC) $(ALL_SRC) $(CORE_LIB) $(DEP_LIB)
 
-build_release: $(CORE_LIB) 
-	$(CC) $(CFLAGS) -O0 -mwindows -static -o $(TARGET) $(ALL_INC) $(ALL_SRC) $(CORE_LIB) $(DEP_LIB)
+build_release: $(CORE_LIB)
+	$(CC) $(CFLAGS) -O3 -static -mwindows -o $(TARGET) $(ALL_INC) $(ALL_SRC) $(CORE_LIB) $(DEP_LIB)
 
 build_preproc:
 	$(CC) $(CFLAGS) -E $(ALL_INC) $(ALL_SRC) $(ALL_LIB) > preproc.c

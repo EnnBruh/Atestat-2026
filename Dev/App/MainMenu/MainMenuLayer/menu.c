@@ -35,12 +35,15 @@ void menu_layer_init(void) {
                                 .text_height    = 0.075
                         }
                 },
-                4
+               3 
         );
         DEBUG_UNTRACE();
 }
 
 void menu_layer_term(void) {
+        DEBUG_TRACE();
+        ui_text_button_list_term(&buttons);
+        DEBUG_UNTRACE();
 }
 
 void menu_layer_on_render(void) {

@@ -73,6 +73,7 @@ ENNDEF_PUBLIC void ui_text_button_list_init(UITextButtonList* list, ENN_TEXT_ALI
         UITextButton button; 
         i32 button_text_len = 0;
 
+
         f32 render_text_ratio = ((f32)global_render.font_atlas.char_dim.x / (f32)global_render.font_atlas.char_dim.y);
         for (i32 i = 0; i < num_buttons; ++i) {
                 button.id    = buttons[i].id;
