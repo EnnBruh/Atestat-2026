@@ -4,7 +4,7 @@ $(info $(SHELL))
 build: build_debug
 
 CC = gcc
-CFLAGS = -Wall -Werror -Wpedantic -std=gnu99 -O0
+CFLAGS = -Wall -Werror -Wpedantic -std=gnu99 
 
 CORE_DIR = Core
 DEP_DIR  = Dep

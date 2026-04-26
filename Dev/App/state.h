@@ -4,9 +4,12 @@
 #include "core.h"
 
 extern struct GlobalState {
-        bool is_key_down[GLFW_KEY_LAST];
-        bool is_button_down[GLFW_MOUSE_BUTTON_LAST];
-        f64vec2 mouse_pos;
+        bool            is_key_down[GLFW_KEY_LAST];
+        bool            is_button_down[GLFW_MOUSE_BUTTON_LAST];
+        f64vec2         mouse_pos;
+        f64vec2         prev_mouse_pos;
+        bool            pause;
+        i32             drawn_vertices;
 } global_state;
 
 extern i32vec4 window_viewport;

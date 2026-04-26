@@ -1,6 +1,6 @@
-#include "Layers/layer.h"
+#include "layer.h"
 
-#include "Layers/MapLayer/map.h"
+#include "Game/MapLayer/map.h"
 
 LayerID game_layer_id;
 
@@ -27,4 +27,21 @@ void game_layer_on_update(f64 dt) {
 }
 
 void game_layer_on_event(Event* event) {
+        switch (event -> type) {
+                case ENN_INPUT_KEY_EVENT:
+                {
+                        struct { i32 key, action; }* data = event -> data;
+
+                        if (data -> key == GLFW_KEY_ESCAPE && data -> action == GLFW_PRESS && !global_state.pause) {
+                                global_state.pause = true;
+                                // blur_layer_update_texture();
+
+                                // layer_set_active(blur_layer_id);
+                                layer_set_active(escape_menu_layer_id);
+                                event -> handled = true;
+                        }
+                        break;
+                }
+                default: break;
+        }
 }

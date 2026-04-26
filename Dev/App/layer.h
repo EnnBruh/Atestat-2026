@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "Rendering/render.h"
+#include "UI/ui.h"
 #include "state.h"
 
 
@@ -13,7 +14,8 @@ LAYER_DEFINE(settings);
 LAYER_DEFINE(game);
 LAYER_DEFINE(map);
 LAYER_DEFINE(blur);
+LAYER_DEFINE(escape_menu);
 
 
-
+ENNDEF_PRIVATE void blur_layer_update_texture(void);
 #endif

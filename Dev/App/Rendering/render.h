@@ -59,7 +59,14 @@ ENNDEF_PRIVATE void render_sprite_push_color(f32vec2 top_left, f32vec2 bott_righ
 ENNDEF_PRIVATE void render_sprite_push(f32vec2 top_left, f32vec2 bott_right, Sprite* sprite);
 ENNDEF_PRIVATE void render_sprite_flip_horizontal(Sprite* sprite);
 ENNDEF_PRIVATE void render_sprite_flip_vertical(Sprite* sprite);
-ENNDEF_PRIVATE void render_text_push(f32vec2 top_left, const char* text, u32 color, f32 text_height);
+
+typedef enum ENN_TEXT_ALIGN {
+        ENN_LEFT_ALIGN,
+        ENN_RIGHT_ALIGN,
+        ENN_CENTER_ALIGN
+} ENN_TEXT_ALIGN;
+
+ENNDEF_PRIVATE void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align);
 
 
 #endif

@@ -1,4 +1,5 @@
 #include "Rendering/render.h"
+#include "state.h"
 
 struct Renderer global_render;
 static Sprite WHITE_TEXTURE;
@@ -67,7 +68,7 @@ void render_init(void) {
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, (sizeof (Vertex)), (void *)offsetof(Vertex, texture_pos));
         glEnableVertexAttribArray(2);
 
-        global_render.shader = render_shader_compile("vertex.glsl", "fragment.glsl");
+        global_render.shader = render_shader_compile("Basic/vertex.glsl", "Basic/fragment.glsl");
         ASSERT(global_render.shader != ENN_SHADER_ERR);
 
         glUseProgram(global_render.shader);
@@ -100,10 +101,13 @@ void render_buff_draw(void) {
                 glBindVertexArray(global_render.vao);
                 glBindBuffer(GL_ARRAY_BUFFER, global_render.vbo);
 
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, global_render.sprite_sheet_id);
+
                 glBufferSubData(GL_ARRAY_BUFFER, 0, (sizeof (Vertex)) * global_render.buff_size, global_render.buff);
                 glDrawArrays(GL_TRIANGLES, 0, global_render.buff_size);
                 
-                // LOG("[Render] Drawing %" PRIi32 " vertices", global_render.buff_size[0]);
+                global_state.drawn_vertices += global_render.buff_size;
                 global_render.buff_size = 0;
         }
 
@@ -130,10 +134,10 @@ Sprite render_sprite_create(Image* texture, i32vec2 texture_top_left, i32vec2 te
 void render_proj_set(f32mat4 proj_matrix) {
         DEBUG_TRACE();
         
-        // if (memcmp(proj_matrix, global_render.proj_matrix, (sizeof (f32mat4)))== 0) {
-        //         DEBUG_UNTRACE();
-        //         return ;
-        // }
+        if (memcmp(proj_matrix, global_render.proj_matrix, (sizeof (f32mat4)))== 0) {
+                DEBUG_UNTRACE();
+                return ;
+        }
 
         render_buff_draw();
 
@@ -248,15 +252,30 @@ void render_sprite_flip_horizontal(Sprite* sprite) {
         DEBUG_UNTRACE();
 }
 
-void render_text_push(f32vec2 top_left, const char* text, u32 color, f32 text_height) {
+void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align) {
         DEBUG_TRACE();
         DEBUG_ASSERT(text != NULL);
 
         f32 text_width = text_height * ((f32)global_render.font_atlas.char_dim.x / (f32)global_render.font_atlas.char_dim.y);
+        i32 text_len = strlen(text);
 
         f32vec2 cursor = top_left;
+        
+        switch (align) {
+                case ENN_LEFT_ALIGN: break;
+                case ENN_RIGHT_ALIGN: 
+                {
+                        cursor.x = bott_right.x - text_len * text_width;
+                        break;
+                }
+                case ENN_CENTER_ALIGN:
+                {
+                        cursor.x = (bott_right.x + top_left.x) * 0.5 - text_len * text_width * 0.5;
+                        break;
+                }
+        }
 
-        for (i32 i = 0; text[i]; ++i) {
+        for (i32 i = 0; i < text_len; ++i) {
                 if (text[i] < ENN_FONT_ATLAS_FIRST_CHAR || text[i] > ENN_FONT_ATLAS_LAST_CHAR) continue ;
 
                 if (text[i] == '\n') {
@@ -268,36 +287,6 @@ void render_text_push(f32vec2 top_left, const char* text, u32 color, f32 text_he
                         render_buff_draw();
 
                 Vertex *vert = &(global_render.buff[global_render.buff_size]);
-
-                // vert[0].pos = cursor;
-                // vert[0].color = color;
-                // vert[0].texture_pos = WHITE_TEXTURE;
-
-                // vert[1].pos.x = cursor.x;
-                // vert[1].color = color;
-                // vert[1].pos.y = cursor.y + text_height;
-                // vert[1].texture_pos = WHITE_TEXTURE;
-
-                // vert[2].pos.x = cursor.x + text_width;
-                // vert[2].color = color;
-                // vert[2].pos.y = cursor.y;
-                // vert[2].texture_pos = WHITE_TEXTURE;
-
-                // vert[3].pos.x = cursor.x + text_width;
-                // vert[3].color = color;
-                // vert[3].pos.y = cursor.y;
-                // vert[3].texture_pos = WHITE_TEXTURE;
-
-                // vert[4].pos.x = cursor.x;
-                // vert[4].color = color;
-                // vert[4].pos.y = cursor.y + text_height;
-                // vert[4].texture_pos = WHITE_TEXTURE;
-
-                // vert[5].pos.x = cursor.x + text_width;
-                // vert[5].pos.y = cursor.y + text_height;
-                // vert[5].color = color;
-                // vert[5].texture_pos = WHITE_TEXTURE;
-
 
                 vert[0].pos = cursor;
                 vert[0].color = color;

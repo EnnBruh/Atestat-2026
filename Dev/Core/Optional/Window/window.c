@@ -509,14 +509,14 @@ ENNDEF_PUBLIC void window_on_framebuff_resize(GLFWwindow* handle, i32 new_width,
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers; ++i)
                 _core_state._window_main.layer_stack.data[i].on_update(_core_state._time_delta);
 
-	glfwMakeContextCurrent(handle);
+        glfwMakeContextCurrent(handle);
 	glClear(GL_COLOR_BUFFER_BIT);
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active; ++i)
+        for (i = _core_state._window_main.layer_stack.end - 1 - _core_state._window_main.num_inactive_layers; i >= _core_state._window_main.layer_stack.start; --i)
                 _core_state._window_main.layer_stack.data[i].on_render();
         glfwSwapBuffers(handle);
         DEBUG_UNTRACE();
@@ -534,7 +534,7 @@ ENNDEF_PUBLIC void window_on_close(GLFWwindow* handle) {
         };
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -551,7 +551,7 @@ ENNDEF_PUBLIC void window_on_move(GLFWwindow* handle, i32 xPos, i32 yPos) {
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -568,7 +568,7 @@ ENNDEF_PUBLIC void window_on_key(GLFWwindow* handle, i32 key, i32 scan, i32 acti
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -585,7 +585,7 @@ ENNDEF_PUBLIC void window_on_mouse_button(GLFWwindow* handle, i32 button, i32 ac
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -602,7 +602,7 @@ ENNDEF_PUBLIC void window_on_mouse_move(GLFWwindow* handle, f64 xPos, f64 yPos) 
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -619,7 +619,7 @@ ENNDEF_PUBLIC void window_on_scroll(GLFWwindow* handle, f64 xOffset, f64 yOffset
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -636,7 +636,7 @@ ENNDEF_PUBLIC void window_on_char(GLFWwindow* handle, u32 code) {
         event.data = (void*)&data;
 
         i32 i;
-        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end && _core_state._window_main.layer_stack.data[i].active && !event.handled; ++i)
+        for (i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end - _core_state._window_main.num_inactive_layers && !event.handled; ++i)
                 _core_state._window_main.layer_stack.data[i].on_event(&event);
         DEBUG_UNTRACE();
 }
@@ -758,6 +758,7 @@ LayerID window_push_layer(Layer* layer) {
 
 void layer_set_active(LayerID id) {
         DEBUG_TRACE();
+
         for (i32 i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end; ++i)
                 if (id == _core_state._window_main.layer_stack.data[i].id) {
                         if (!_core_state._window_main.layer_stack.data[i].active) {
@@ -768,11 +769,14 @@ void layer_set_active(LayerID id) {
                         DEBUG_UNTRACE();
                         return;
                 }
+
+
         DEBUG_UNTRACE();
 }
 
 void layer_set_inactive(LayerID id) {
         DEBUG_TRACE();
+
         for (i32 i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end; ++i)
                 if (id == _core_state._window_main.layer_stack.data[i].id) {
                         if (_core_state._window_main.layer_stack.data[i].active) {
@@ -783,6 +787,19 @@ void layer_set_inactive(LayerID id) {
                         DEBUG_UNTRACE();
                         return;
                 }
+
+        DEBUG_UNTRACE();
+}
+
+bool layer_is_active(LayerID id) {
+        DEBUG_TRACE();
+        for (i32 i = _core_state._window_main.layer_stack.start; i < _core_state._window_main.layer_stack.end; ++i)
+                if (id == _core_state._window_main.layer_stack.data[i].id) {
+                        DEBUG_UNTRACE();
+                        return _core_state._window_main.layer_stack.data[i].active;
+                }
+        
+        return false;
         DEBUG_UNTRACE();
 }
 

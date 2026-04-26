@@ -113,6 +113,7 @@ ENNDEF_PUBLIC ENN_CMP __layer_compare(Layer a, Layer b) {
 typedef GLuint 	ShaderID;
 typedef GLuint 	VBOID;
 typedef GLuint 	VAOID;
+typedef GLuint 	FBOID;
 
 typedef GLuint 	TextureID;
 
@@ -369,6 +370,7 @@ typedef struct Window {
         ENNDEF_PRIVATE LayerID  window_push_layer(Layer* layer);
         ENNDEF_PRIVATE void     layer_set_active(LayerID id);
         ENNDEF_PRIVATE void     layer_set_inactive(LayerID id);
+        ENNDEF_PRIVATE bool     layer_is_active(LayerID id);
 
         ENNDEF_PRIVATE void 	window_set_fullscreen(bool state);
         ENNDEF_PRIVATE void 	window_set_vsync(bool state);

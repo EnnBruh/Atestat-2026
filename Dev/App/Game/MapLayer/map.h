@@ -1,7 +1,7 @@
 #ifndef GAME_MAP_H
 #define GAME_MAP_H
 
-#include "Layers/layer.h"
+#include "layer.h"
 
 #define ENN_MAP_ZOOM_MAX 5.0
 #define ENN_MAP_ZOOM_MIN 0.2
