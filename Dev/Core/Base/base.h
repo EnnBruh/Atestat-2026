@@ -1492,7 +1492,6 @@ ENNDEF_PUBLIC i32 file_write_cstring(const char* filepath, char* data, i32 size)
    */
 
 /* ---------- Text Serialization ---------- */
-
 #ifndef ENN_DATAFILE_KEYPATH_SEPARATOR
 #       define ENN_DATAFILE_KEYPATH_SEPARATOR           '|'
 #endif
@@ -1517,7 +1516,6 @@ ENNDEF_PUBLIC i32 file_write_cstring(const char* filepath, char* data, i32 size)
 #       define ENN_DATAFILE_OPERATOR_LIST_CONTINUE      ','
 #endif
 
-
 #ifndef ENN_DATAFILE_LIST_ITEM_PADDING
 #       define ENN_DATAFILE_LIST_ITEM_PADDING           4
 #endif
@@ -1525,9 +1523,6 @@ ENNDEF_PUBLIC i32 file_write_cstring(const char* filepath, char* data, i32 size)
 #ifndef ENN_DATAFILE_FILE_EXTENSION
 #       define ENN_DATAFILE_FILE_EXTENSION              ".enn"
 #endif
-
-#define ENN_DATAFILE_WHITESPACE                         " \n\t"
-#define ENN_DATAFILE_NUMBER_SYMBOLS                     "0123456789.-"
 
 typedef enum ENN_DATAFILE_DATA_TYPES {
     ENN_INT,
@@ -1555,7 +1550,6 @@ typedef struct DataFileNode {
 } DataFileNode;
 
 typedef struct DataFile {
-
     DataFileNode* root;
 } DataFile;
 
@@ -1565,7 +1559,7 @@ ENNDEF_PRIVATE void     datafile_destroy(DataFile* df);
 ENNDEF_PRIVATE void     datafile_read(DataFile* df, const char* filepath);
 ENNDEF_PRIVATE void     datafile_write(DataFile* df, const char* filepath);
 
-ENNDEF_PRIVATE i32 	    datafile_write_precalc(DataFile* df);
+ENNDEF_PRIVATE i32      datafile_write_precalc(DataFile* df);
 
 ENNDEF_PRIVATE void     datafile_read_abstract(DataFile* df, const char* buff);
 ENNDEF_PRIVATE void     datafile_write_abstract(DataFile* df, const char* buff);

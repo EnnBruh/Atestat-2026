@@ -1,10 +1,12 @@
 #include "layer.h"
 
 #include "Game/MapLayer/map.h"
+#include "Game/objects.h"
 
 LayerID game_layer_id;
 
 void game_layer_init(void) {
+        LOG("sizeof internal pin = %zu", (sizeof (InternalPin)));
 }
 
 void game_layer_term(void) {
