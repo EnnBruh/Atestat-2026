@@ -26,4 +26,15 @@ ENNDEF_PUBLIC f32vec2 ndc_to_screen(f32vec2 ndc_pos) {
                 .y = window_viewport.y + (ndc_pos.y + 1.0) * ((f32)window_viewport.w * 0.5)
         };
 }
+
+extern struct Settings {
+        bool debug_mode : 1;
+        bool fullscreen : 1;
+        bool vsync      : 1;
+        i32vec2 resolution;
+        i32 simulaton_tps;
+} settings;
+extern DataFile settings_data;
+
+ENNDEF_PRIVATE void settings_get_init(void);
 #endif

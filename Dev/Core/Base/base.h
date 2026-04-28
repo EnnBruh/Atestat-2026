@@ -1491,6 +1491,14 @@ ENNDEF_PUBLIC i32 file_write_cstring(const char* filepath, char* data, i32 size)
    }
    */
 
+ENNDEF_PUBLIC bool file_exists(const char* filepath) {
+#   if ENN_PLATFORM == ENN_WINDOWS
+        return GetFileAttributes(filepath) != INVALID_FILE_ATTRIBUTES;
+#   else
+        return access(filepath, F_OK) == 0;
+#   endif
+}
+
 /* ---------- Text Serialization ---------- */
 #ifndef ENN_DATAFILE_KEYPATH_SEPARATOR
 #       define ENN_DATAFILE_KEYPATH_SEPARATOR           '|'
@@ -1550,7 +1558,8 @@ typedef struct DataFileNode {
 } DataFileNode;
 
 typedef struct DataFile {
-    DataFileNode* root;
+    DataFileNode*   root;
+    char*           filepath;
 } DataFile;
 
 ENNDEF_PRIVATE void     datafile_create(DataFile* df);

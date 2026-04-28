@@ -4,9 +4,9 @@ LayerID menu_layer_id;
 
 static UITextButtonList buttons;
 
-#define BUILD_BUTTON_ID 0x001
-#define SETTINGS_BUTTON_ID 0x002
-#define EXIT_BUTTON_ID 0x003
+#define BUILD_BUTTON_ID         0x001
+#define SETTINGS_BUTTON_ID      0x002
+#define EXIT_BUTTON_ID          0x003
 
 void menu_layer_init(void) {
         DEBUG_TRACE();
@@ -102,6 +102,11 @@ void menu_layer_on_event(Event* event) {
                                                 layer_set_inactive(menu_layer_id);
                                                 layer_set_active(map_layer_id);
                                                 layer_set_active(game_layer_id);
+                                                break;
+                                        }
+                                        case SETTINGS_BUTTON_ID:
+                                        {
+                                                layer_set_active(settings_layer_id);
                                                 break;
                                         }
                                         default: break;

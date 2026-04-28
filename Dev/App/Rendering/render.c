@@ -282,6 +282,11 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
                         continue ;
                 }
 
+                if (text[i] == ' ') {
+                        cursor.x += text_width;
+                        continue ;
+                }
+
                 if (global_render.buff_size + 6 > ENN_RENDER_VERTEX_BUFF_SIZE)
                         render_buff_draw();
 
