@@ -10,6 +10,7 @@
 LAYER_DEFINE(void);
 LAYER_DEFINE(debug);
 LAYER_DEFINE(menu);
+LAYER_DEFINE(workspace);
 LAYER_DEFINE(settings);
 LAYER_DEFINE(game);
 LAYER_DEFINE(map);

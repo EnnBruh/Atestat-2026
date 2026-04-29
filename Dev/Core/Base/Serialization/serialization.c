@@ -19,14 +19,14 @@ static void log_serialization_error(const char* msg, const char* filepath, const
         context[i] = (cursor[i] == '\n' || cursor[i] == '\r') ? ' ' : cursor[i];
     }
 
-    DEBUG_LOG_WARN("[Serialization] %s at line %d in %s. Context: '%s'", 
+    LOG_WARN("[Serialization] %s at line %d in %s. Context: '%s'", 
                    msg, (int)line, filepath ? filepath : "abstract_buffer", context);
 }
 
 void datafile_create(DataFile* df) {
     DEBUG_TRACE();
     DEBUG_ASSERT(df != NULL);
-    memset(df, 0, sizeof(DataFile));
+    memset(df, 0, (sizeof (DataFile)));
     DEBUG_UNTRACE();
 }
 
@@ -51,6 +51,7 @@ void datafile_destroy(DataFile* df) {
     DEBUG_ASSERT(df != NULL);
     datafile_destroy_node(df -> root);
     df -> root = NULL;
+    free(df -> filepath);
     DEBUG_UNTRACE();
 }
 
@@ -58,7 +59,7 @@ static DataFileNode* datafile_parse_node(DataFileNode* parent, char** cursor, co
     DEBUG_TRACE();
     DEBUG_ASSERT(cursor != NULL);
 
-    DataFileNode* node = calloc(1, sizeof(DataFileNode));
+    DataFileNode* node = calloc(1, (sizeof (DataFileNode)));
     if (!node) {
         log_serialization_error("Memory allocation failed for DataFileNode", filepath, buffer_start, *cursor);
         DEBUG_UNTRACE();
@@ -111,7 +112,7 @@ static DataFileNode* datafile_parse_node(DataFileNode* parent, char** cursor, co
         while (**cursor && **cursor != ENN_DATAFILE_STRING_IDENTIFIER) ++(*cursor);
         if (!**cursor) {
             char err_buf[128];
-            snprintf(err_buf, sizeof(err_buf), "Unterminated string value for key '%s'", node -> key);
+            snprintf(err_buf, (sizeof err_buf), "Unterminated string value for key '%s'", node -> key);
             log_serialization_error(err_buf, filepath, buffer_start, *cursor);
             datafile_destroy_node(node);
             DEBUG_UNTRACE();
@@ -139,7 +140,7 @@ static DataFileNode* datafile_parse_node(DataFileNode* parent, char** cursor, co
             DataFileNode* child = datafile_parse_node(node, cursor, filepath, buffer_start);
             if (!child) {
                 char err_buf[128];
-                snprintf(err_buf, sizeof(err_buf), "Failed to parse child node in list for key '%s'", node -> key);
+                snprintf(err_buf, (sizeof err_buf), "Failed to parse child node in list for key '%s'", node -> key);
                 log_serialization_error(err_buf, filepath, buffer_start, *cursor);
                 datafile_destroy_node(node);
                 DEBUG_UNTRACE();
@@ -174,7 +175,7 @@ static DataFileNode* datafile_parse_node(DataFileNode* parent, char** cursor, co
         }
     } else {
         char err_buf[128];
-        snprintf(err_buf, sizeof(err_buf), "Unknown data type for key '%s'", node -> key);
+        snprintf(err_buf, (sizeof err_buf), "Unknown data type for key '%s'", node -> key);
         log_serialization_error(err_buf, filepath, buffer_start, *cursor);
         datafile_destroy_node(node);
         DEBUG_UNTRACE();
@@ -253,11 +254,11 @@ DataFileNode* datafile_parse_keypath_find_or_create_node(DataFile* df, char* key
     if (len >= ENN_DATAFILE_MAX_STRING_SIZE) len = ENN_DATAFILE_MAX_STRING_SIZE - 1;
 
     if (!root) {
-        root = calloc(1, sizeof(DataFileNode));
+        root = calloc(1, (sizeof (DataFileNode)));
         memcpy(root -> key, token, len);
         df -> root = root;
     } else if (strncmp(token, root -> key, len) != 0 || root -> key[len] != '\0') {
-        DataFileNode* new_node = calloc(1, sizeof(DataFileNode));
+        DataFileNode* new_node = calloc(1, (sizeof (DataFileNode)));
         memcpy(new_node -> key, token, len);
         new_node -> parent = root;
         
@@ -286,7 +287,7 @@ DataFileNode* datafile_parse_keypath_find_or_create_node(DataFile* df, char* key
         }
 
         if (!found) {
-            DataFileNode* new_node = calloc(1, sizeof(DataFileNode));
+            DataFileNode* new_node = calloc(1, (sizeof (DataFileNode)));
             memcpy(new_node -> key, token, len);
             new_node -> parent = root;
             vector_push_back(root -> data.children, new_node);
@@ -406,6 +407,7 @@ i32 datafile_get_i32(DataFile* df, char* keypath) {
     DataFileNode* node = datafile_parse_keypath_find_node(df, keypath);
     DEBUG_UNTRACE();
     if (node && node -> type == ENN_INT) return node -> data.int_val;
+    LOG_WARN("[Serialization] No i32 value was found for key '%s' in '%s'", keypath, df -> filepath);
     return 0;
 }
 
@@ -414,6 +416,7 @@ f32 datafile_get_f32(DataFile* df, char* keypath) {
     DataFileNode* node = datafile_parse_keypath_find_node(df, keypath);
     DEBUG_UNTRACE();
     if (node && node -> type == ENN_REAL) return node -> data.real_val;
+    LOG_WARN("[Serialization] No f32 value was found for key '%s' in '%s'", keypath, df -> filepath);
     return 0.0f;
 }
 
@@ -422,6 +425,7 @@ char* datafile_get_cstring(DataFile* df, char* keypath) {
     DataFileNode* node = datafile_parse_keypath_find_node(df, keypath);
     DEBUG_UNTRACE();
     if (node && node -> type == ENN_STRING) return node -> data.string_val;
+    LOG_WARN("[Serialization] No cstring value was found for key '%s' in '%s'", keypath, df -> filepath);
     return NULL;
 }
 
@@ -433,6 +437,9 @@ void datafile_read(DataFile* df, const char* filepath) {
     i32 path_len = strlen(filepath);
     i32 ext_len = strlen(ENN_DATAFILE_FILE_EXTENSION);
     DEBUG_ASSERT(path_len >= ext_len && strcmp(filepath + path_len - ext_len, ENN_DATAFILE_FILE_EXTENSION) == 0);
+
+    df -> filepath = calloc(path_len, (sizeof (char)));
+    memcpy(df -> filepath, filepath, path_len * (sizeof (char)));
 
     char* file_data;
     file_read_cstring(filepath, &file_data);
@@ -486,7 +493,7 @@ void datafile_write(DataFile* df, const char* filepath) {
     i32 reserve_size = datafile_write_node_precalc(df -> root, 0);
     DEBUG_ASSERT(reserve_size > 0);
 
-    char* file_data = calloc(reserve_size + 1, sizeof(char));
+    char* file_data = calloc(reserve_size + 1, (sizeof (char)));
     char* copy = file_data;
     datafile_write_node(df -> root, 0, &copy);
 

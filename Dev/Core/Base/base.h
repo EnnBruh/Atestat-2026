@@ -604,7 +604,7 @@ extern "C" {
 # 	define vector_push_back(_vec, _elem)																										        \
     do {																													        \
         DEBUG_TRACE(vector_push_back);																										\
-        DEBUG_ASSERT((sizeof (*(_vec).data)) == (sizeof (_elem)), "Requested element '%s' push_back into vector '%s' of different size", TO_STR(_elem), TO_STR(_vec));									        \
+        DEBUG_ASSERT((sizeof (*(_vec).data)) == (sizeof (_elem)), "Requested element '%s' push_back into vector '%s' of different size\n\tsizeof(%s) = %zu != sizeof(%s) = %zu", TO_STR(_elem), TO_STR(_vec), TO_STR(_elem), (sizeof (_elem)), TO_STR(_vec), (sizeof *(_vec).data));									        \
         if ((_vec).capacity == 0) {																									        \
             (_vec).capacity = (i32)(ENN_SMALLEST_POW2_GREATER_THAN(ENN_VECTOR_INIT_CAPACITY));																	        \
             (_vec).data = calloc((_vec).capacity, (sizeof (*(_vec).data)));																				        \
@@ -1421,17 +1421,30 @@ ENNDEF_PUBLIC void mutex_destroy(Mutex* mutex) {
 
 typedef struct dirent 	DirEntry;
 
-#if ENN_PLATFORM == ENN_WINDOWS
-#	define directory_create(name) 	mkdir(name)
-#else
-# 	define directory_create(name) mkdir(name, 0755)
-#endif
+ENNDEF_PUBLIC i32 directory_create(const char* dirpath) {
+#   if ENN_PLATFORM == ENN_WINDOWS
+        return mkdir(dirpath);
+#   else
+        return mkdir(dirpath, 0755);
+#   endif
+}
 
-#define directory_open(name) 	opendir(name)
-#define directory_close(name) 	closedir(name)
-#define directory_read(name) 	readdir(name)
+ENNDEF_PUBLIC DIR* directory_open(const char* dirpath) {
+    return opendir(dirpath);
+}
+
+ENNDEF_PUBLIC i32 directory_close(DIR* dir) {
+    return closedir(dir);
+}
+
+ENNDEF_PUBLIC DirEntry* directory_read(DIR* dir) {
+    return readdir(dir);
+}
 
 /* ---------- File Helpers ---------- */
+
+#include <sys/types.h>
+#include <sys/stat.h>
 
 ENNDEF_PUBLIC i32 file_read_cstring(const char *filepath, char **data) {
     DEBUG_TRACE();
@@ -1469,6 +1482,10 @@ ENNDEF_PUBLIC i32 file_write_cstring(const char* filepath, char* data, i32 size)
     return file_size;
 }
 
+ENNDEF_PUBLIC i32 file_remove(const char* filepath) {
+    return remove(filepath);
+}
+
 /*
    ENNDEF_PUBLIC string file_read_string(const char* filepath) {
    DEBUG_ASSERT(filepath != NULL);
@@ -1497,6 +1514,17 @@ ENNDEF_PUBLIC bool file_exists(const char* filepath) {
 #   else
         return access(filepath, F_OK) == 0;
 #   endif
+}
+
+ENNDEF_PUBLIC time_t file_get_date(const char* filepath) {
+#   if ENN_PLATFORM == ENN_WINDOWS
+    struct _stat st;
+    if (_stat(filepath, &st) != 0) return (time_t)0;
+#   else 
+    struct stat st;
+    if (stat(filepath, &st) != 0) return (time_t)0;
+#   endif
+    return st.st_mtime;
 }
 
 /* ---------- Text Serialization ---------- */

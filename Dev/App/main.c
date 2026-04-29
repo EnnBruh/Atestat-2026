@@ -46,6 +46,12 @@ signed main(void) {
                 .priority = 1,
                 LAYER_ASSIGN(menu)
         });
+
+        workspace_layer_id = window_push_layer(&(Layer) {
+                .active = false,
+                .priority = 1,
+                LAYER_ASSIGN(workspace)
+        });
         
         settings_layer_id = window_push_layer(&(Layer) {
                 .active = false,

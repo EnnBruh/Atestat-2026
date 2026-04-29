@@ -37,4 +37,19 @@ extern struct Settings {
 extern DataFile settings_data;
 
 ENNDEF_PRIVATE void settings_get_init(void);
+
+ENNDEF_PUBLIC bool is_inside_rectangle(f32vec2 point, f32vec4 rectangle) {
+    return (point.x >= rectangle.x &&
+            point.x <= (rectangle.x + rectangle.z) &&
+            point.y >= rectangle.y &&
+            point.y <= (rectangle.y + rectangle.w));
+}
+
+ENNDEF_PUBLIC bool is_intersect_rectangles(f32vec4 rect1, f32vec4 rect2) {
+    return (rect1.x < (rect2.x + rect2.z) &&
+            (rect1.x + rect1.z) > rect2.x &&
+            rect1.y < (rect2.y + rect2.w) &&
+            (rect1.y + rect1.w) > rect2.y);
+}
+
 #endif

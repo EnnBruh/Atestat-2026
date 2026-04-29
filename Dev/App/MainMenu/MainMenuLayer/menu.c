@@ -15,7 +15,7 @@ void menu_layer_init(void) {
                 (UITextButtonData[]) {
                         (UITextButtonData) { 
                                 .id             = BUILD_BUTTON_ID,
-                                .pos            = { -0.95, -0.075 },
+                                .pos            = { -0.95, -0.1 },
                                 .color          = 0xFFFFFFFF,
                                 .text           = "BUILD",
                                 .text_height    = 0.075
@@ -29,7 +29,7 @@ void menu_layer_init(void) {
                         },
                         (UITextButtonData) {
                                 .id             = EXIT_BUTTON_ID,
-                                .pos            = { -0.95, 0.075 },
+                                .pos            = { -0.95, 0.1 },
                                 .color          = 0xd75f5fFF,
                                 .text           = "EXIT TO DESKTOP",
                                 .text_height    = 0.075
@@ -100,8 +100,9 @@ void menu_layer_on_event(Event* event) {
                                         case BUILD_BUTTON_ID:
                                         {
                                                 layer_set_inactive(menu_layer_id);
-                                                layer_set_active(map_layer_id);
-                                                layer_set_active(game_layer_id);
+                                                // layer_set_active(map_layer_id);
+                                                // layer_set_active(game_layer_id);
+                                                layer_set_active(workspace_layer_id);
                                                 break;
                                         }
                                         case SETTINGS_BUTTON_ID:

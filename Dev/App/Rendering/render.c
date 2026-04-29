@@ -278,17 +278,20 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
         }
 
         for (i32 i = 0; i < text_len; ++i) {
-                if (text[i] < ENN_FONT_ATLAS_FIRST_CHAR || text[i] > ENN_FONT_ATLAS_LAST_CHAR) continue ;
+                char ch = text[i];
+                if (ch < ENN_FONT_ATLAS_FIRST_CHAR || ch > ENN_FONT_ATLAS_LAST_CHAR) continue ;
 
-                if (text[i] == '\n') {
+                if (ch == '\n') {
                         cursor.y += text_height; cursor.x = top_left.x;
                         continue ;
                 }
 
-                if (text[i] == ' ') {
+                if (ch == ' ') {
                         cursor.x += text_width;
                         continue ;
                 }
+
+                if (ch >= 'a' && ch <= 'z') ch -= ('a' - 'A');
 
                 if (global_render.buff_size + 6 > ENN_RENDER_VERTEX_BUFF_SIZE)
                         render_buff_draw();
@@ -297,38 +300,38 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
 
                 vert[0].pos = cursor;
                 vert[0].color = color;
-                vert[0].texture_pos.x = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].x;
-                vert[0].texture_pos.y = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].y;
+                vert[0].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
+                vert[0].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
 
                 vert[1].pos.x = cursor.x;
                 vert[1].color = color;
-                vert[1].texture_pos.x = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].x;
+                vert[1].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
                 vert[1].pos.y = cursor.y + text_height;
-                vert[1].texture_pos.y = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].w;
+                vert[1].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
 
                 vert[2].pos.x = cursor.x + text_width;
                 vert[2].color = color;
-                vert[2].texture_pos.x = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].z;
+                vert[2].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
                 vert[2].pos.y = cursor.y;
-                vert[2].texture_pos.y = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].y;
+                vert[2].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
 
                 vert[3].pos.x = cursor.x + text_width;
                 vert[3].color = color;
-                vert[3].texture_pos.x = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].z;
+                vert[3].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
                 vert[3].pos.y = cursor.y;
-                vert[3].texture_pos.y = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].y;
+                vert[3].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
 
                 vert[4].pos.x = cursor.x;
                 vert[4].color = color;
-                vert[4].texture_pos.x = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].x;
+                vert[4].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
                 vert[4].pos.y = cursor.y + text_height;
-                vert[4].texture_pos.y = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].w;
+                vert[4].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
 
                 vert[5].pos.x = cursor.x + text_width;
                 vert[5].pos.y = cursor.y + text_height;
                 vert[5].color = color;
-                vert[5].texture_pos.x = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].z;
-                vert[5].texture_pos.y = global_render.font_atlas.char_sprite[text[i] - ENN_FONT_ATLAS_FIRST_CHAR].w;
+                vert[5].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
+                vert[5].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
 
                 global_render.buff_size += 6;
                 cursor.x += text_width;

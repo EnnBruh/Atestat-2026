@@ -69,6 +69,8 @@ void void_layer_on_event(Event* event) {
                         }
 
                         window_set_viewport(window_viewport.x, window_viewport.y, window_viewport.z, window_viewport.w);
+
+                        settings.resolution = *window_dim;
                         break;
                 }
                 case ENN_INPUT_KEY_EVENT:
@@ -76,6 +78,7 @@ void void_layer_on_event(Event* event) {
                         struct { i32 key, action; }* data = event -> data;
                         global_state.is_key_down[data -> key] = (data -> action == GLFW_PRESS || data -> action == GLFW_REPEAT);
                         if (data -> key == GLFW_KEY_F11 && data -> action == GLFW_PRESS) {
+                                settings.fullscreen = !settings.fullscreen;
                                 window_flip_fullscreen();
                         }
 

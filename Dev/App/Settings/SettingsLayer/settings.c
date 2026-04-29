@@ -91,14 +91,14 @@ void settings_layer_init(void) {
                                 .id             = SIM_TPS_BUTTON_ID,
                                 .pos            = { -0.7, 0.15 },
                                 .color          = 0xFFFFFFFF,
-                                .text           = "SIMULATION TICKS PER SECOND   ",
+                                .text           = "SIMULATION TICKS PER SECOND      ",
                                 .text_height    = 0.075
                         },
                         (UITextButtonData) {
                                 .id             = CLOSE_BUTTON_ID,
-                                .pos            = { -0.9, 0.85 },
+                                .pos            = { -0.7, 0.25 },
                                 .color          = 0xd75f5fFF,
-                                .text           = "CLOSE",
+                                .text           = "BACK",
                                 .text_height    = 0.075
                         }
                 },
@@ -179,21 +179,21 @@ void settings_layer_on_render(void) {
                                         }
 
                                         render_text_push(
-                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x, buttons.list.data[i].pos.y },
-                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x + vector_size(input_string) * buttons.list.data[i].dim.y * render_text_ratio, buttons.list.data[i].pos.y + buttons.list.data[i].dim.y },
+                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x - buttons.list.data[i].dim.y * render_text_ratio * (sizeof "ON"), buttons.list.data[i].pos.y },
+                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x - buttons.list.data[i].dim.y * render_text_ratio * (sizeof "ON") + vector_size(input_string) * buttons.list.data[i].dim.y * render_text_ratio, buttons.list.data[i].pos.y + buttons.list.data[i].dim.y },
                                                 input_string.data + input_string.start, buttons.hover == &buttons.list.data[i] ? buttons.button_hover_color : 0xFFFFFFFF, buttons.list.data[i].dim.y, ENN_LEFT_ALIGN
                                         );
 
                                         if (cursor_state)
                                                 render_rectangle_push(
-                                                    (f32vec2){buttons.list.data[i].pos.x + buttons.list.data[i].dim.x + vector_size(input_string) * buttons.list.data[i].dim.y * render_text_ratio, buttons.list.data[i].pos.y},
-                                                    (f32vec2){buttons.list.data[i].pos.x + buttons.list.data[i].dim.x + vector_size(input_string) * buttons.list.data[i].dim.y * render_text_ratio + buttons.list.data[i].dim.y * render_text_ratio / 2, buttons.list.data[i].pos.y + buttons.list.data[i].dim.y},
+                                                    (f32vec2){buttons.list.data[i].pos.x + buttons.list.data[i].dim.x - buttons.list.data[i].dim.y * render_text_ratio * (sizeof "ON") + vector_size(input_string) * buttons.list.data[i].dim.y * render_text_ratio, buttons.list.data[i].pos.y},
+                                                    (f32vec2){buttons.list.data[i].pos.x + buttons.list.data[i].dim.x - buttons.list.data[i].dim.y * render_text_ratio * (sizeof "ON") + vector_size(input_string) * buttons.list.data[i].dim.y * render_text_ratio + buttons.list.data[i].dim.y * render_text_ratio / 2, buttons.list.data[i].pos.y + buttons.list.data[i].dim.y},
                                                     buttons.hover == &buttons.list.data[i] ? buttons.button_hover_color : 0xFFFFFFFF
                                                 );
                                 } else {
                                         render_text_push(
-                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x, buttons.list.data[i].pos.y },
-                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x + vector_size(simulation_tps_string) * buttons.list.data[i].dim.y * render_text_ratio, buttons.list.data[i].pos.y + buttons.list.data[i].dim.y },
+                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x - buttons.list.data[i].dim.y * render_text_ratio * (sizeof "ON"), buttons.list.data[i].pos.y },
+                                                (f32vec2) { buttons.list.data[i].pos.x + buttons.list.data[i].dim.x - buttons.list.data[i].dim.y * render_text_ratio * (sizeof "ON") + vector_size(simulation_tps_string) * buttons.list.data[i].dim.y * render_text_ratio, buttons.list.data[i].pos.y + buttons.list.data[i].dim.y },
                                                 simulation_tps_string.data + simulation_tps_string.start, buttons.hover == &buttons.list.data[i] ? buttons.button_hover_color : 0xFFFFFFFF, buttons.list.data[i].dim.y, ENN_LEFT_ALIGN
                                         );
                                 }
@@ -331,12 +331,6 @@ void settings_layer_on_event(Event* event) {
                                         }
                                 }
                         }
-                        break;
-                }
-                case ENN_WINDOW_RESIZE_EVENT:
-                {
-                        i32vec2* data = event -> data;
-                        settings.resolution = *data;
                         break;
                 }
                 default: break;
