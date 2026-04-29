@@ -119,9 +119,9 @@ void escape_menu_layer_on_event(Event* event) {
                                         }
                                         case SETTINGS_BUTTON_ID:
                                         {
-                                                global_state.pause = false;
+                                                // global_state.pause = false;
                                                 layer_set_active(settings_layer_id);
-                                                layer_set_inactive(escape_menu_layer_id);
+                                                // layer_set_inactive(escape_menu_layer_id);
                                                 break;
                                         }
                                         default: break;

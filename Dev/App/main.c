@@ -49,7 +49,7 @@ signed main(void) {
         
         settings_layer_id = window_push_layer(&(Layer) {
                 .active = false,
-                .priority = 3,
+                .priority = 8,
                 LAYER_ASSIGN(settings)
         });
 
@@ -61,7 +61,7 @@ signed main(void) {
 
         escape_menu_layer_id = window_push_layer(&(Layer) {
                 .active = false,
-                .priority = 9,
+                .priority = 5,
                 LAYER_ASSIGN(escape_menu)
         });
 

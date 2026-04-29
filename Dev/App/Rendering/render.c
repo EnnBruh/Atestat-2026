@@ -253,7 +253,10 @@ void render_sprite_flip_horizontal(Sprite* sprite) {
 
 void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align) {
         DEBUG_TRACE();
-        DEBUG_ASSERT(text != NULL);
+        if (text == NULL) {
+                // DEBUG_LOG_WARN("[Rendering] No text recieved. Render request ignored");
+                return ;
+        }
 
         f32 text_width = text_height * ((f32)global_render.font_atlas.char_dim.x / (f32)global_render.font_atlas.char_dim.y);
         i32 text_len = strlen(text);
