@@ -15,15 +15,14 @@ extern "C" {
 
 #define ENN_GCC          0x4
 #define ENN_CLANG        0x5
-#define ENN_LLVM         0x6
-#define ENN_MSVC         0x7
+#define ENN_MSVC         0x6
 
-#define ENN_C89          0x8
-#define ENN_C99          0x9
-#define ENN_C11          0xA
-#define ENN_C17          0xB
-#define ENN_C23          0xC
-#define ENN_CPP          0xD
+#define ENN_C89          0x7
+#define ENN_C99          0x8
+#define ENN_C11          0x9
+#define ENN_C17          0xA
+#define ENN_C23          0xB
+#define ENN_CPP          0xC
 
 #ifndef ENN_PLATFORM
 #       if   defined(_WIN32) || defined(_WIN64)
@@ -160,22 +159,22 @@ extern "C" {
 #include <inttypes.h>
 #include <stdbool.h>
 
-    typedef uint8_t 	u8;
-    typedef uint16_t 	u16;
-    typedef uint32_t 	u32;
-    typedef uint64_t 	u64;
+typedef uint8_t 	u8;
+typedef uint16_t 	u16;
+typedef uint32_t 	u32;
+typedef uint64_t 	u64;
 
-    typedef int8_t 		i8;
-    typedef int16_t 	i16;
-    typedef int32_t 	i32;
-    typedef int64_t 	i64;
+typedef int8_t 		i8;
+typedef int16_t 	i16;
+typedef int32_t 	i32;
+typedef int64_t 	i64;
 
-    typedef float 		f32;
-    typedef double 		f64;
-    typedef long double 	f128;
+typedef float 		f32;
+typedef double 		f64;
+typedef long double 	f128;
 
-    typedef u8              byte;
-    typedef size_t          usize;
+typedef u8              byte;
+typedef size_t          usize;
 
 #define U8_MIN 		UINT8_MIN
 #define U16_MIN 	UINT16_MIN
@@ -235,25 +234,25 @@ extern "C" {
     ENNDEF_PRIVATE void debug_term(void);
 
 #ifndef ENN_DEBUG_MODE
-# 	define DEBUG_DUMP_GENERAL_LOGS()																										        \
-    do {																												                \
-        fwrite(_internal_general_logs._buff, _internal_general_logs._buff_len, (sizeof (char)), _internal_general_logs._stream);														\
-        _internal_general_logs._buff_len = 0;																									\
+# 	define DEBUG_DUMP_GENERAL_LOGS()                                                                                                \
+    do {                                                                                                                                \
+        fwrite(_internal_general_logs._buff, _internal_general_logs._buff_len, (sizeof (char)), _internal_general_logs._stream);        \
+        _internal_general_logs._buff_len = 0;                                                                                           \
     } while (0)
 #else
-#       define DEBUG_DUMP_GENERAL_LOGS()																										        \
-    do {																												                \
-        fwrite(_internal_general_logs._buff, _internal_general_logs._buff_len, (sizeof (char)), _internal_general_logs._stream);													        \
-        fwrite(_internal_general_logs._buff, _internal_general_logs._buff_len, (sizeof (char)), stdout);																	\
-        _internal_general_logs._buff_len = 0;																									\
+#       define DEBUG_DUMP_GENERAL_LOGS()                                                                                                \
+    do {                                                                                                                                \
+        fwrite(_internal_general_logs._buff, _internal_general_logs._buff_len, (sizeof (char)), _internal_general_logs._stream);        \
+        fwrite(_internal_general_logs._buff, _internal_general_logs._buff_len, (sizeof (char)), stdout);                                \
+        _internal_general_logs._buff_len = 0;                                                                                           \
     } while (0)
 #endif
 
 #ifdef ENN_DEBUG_MODE
-#       define DEBUG_DUMP_MEMORY_LOGS()                                                                                                                                                                                                                         \
-    do {                                                                                                                                                                                                                                            \
-        fwrite(_internal_memory_logs._buff, _internal_memory_logs._buff_len, (sizeof (char)), _internal_memory_logs._stream);                                                                                                                   \
-        _internal_memory_logs._buff_len = 0;                                                                                                                                                                                                    \
+#       define DEBUG_DUMP_MEMORY_LOGS()                                                                                              \
+    do {                                                                                                                             \
+        fwrite(_internal_memory_logs._buff, _internal_memory_logs._buff_len, (sizeof (char)), _internal_memory_logs._stream);        \
+        _internal_memory_logs._buff_len = 0;                                                                                         \
     } while (0)
 #endif
 
@@ -283,34 +282,34 @@ extern "C" {
 #       endif
 
 #       ifdef ENN_DEBUG_MODE
-#               define LOG(...)                                                                                                                                                                                    						\
-    do {                                                                                                                                                                                            					\
-        const i32 _to_be_written = snprintf(NULL, 0, __VA_ARGS__);                                                                                                                                    					\
-        if (_to_be_written >= ENN_MAX_LOG_BUFF_SIZE) break;                                                                                                                                     					\
-        const struct tm _current_time = *localtime(&(time_t) { time(NULL) });					                                                                                        				\
-        if (_internal_general_logs._buff_len + (sizeof ENN_LOG_TIME_FORMAT) * 2 >= ENN_MAX_LOG_BUFF_SIZE)                                                                                      						\
-        DEBUG_DUMP_GENERAL_LOGS();																							        \
-        _internal_general_logs._buff_len += strftime(_internal_general_logs._buff + _internal_general_logs._buff_len, (sizeof ENN_LOG_TIME_FORMAT) * 2, ENN_LOG_TIME_FORMAT, &_current_time);   					\
-        if (_internal_general_logs._buff_len + _to_be_written >= ENN_MAX_LOG_BUFF_SIZE)                                                                                                        						\
-        DEBUG_DUMP_GENERAL_LOGS();																							        \
-        _internal_general_logs._buff_len += sprintf(_internal_general_logs._buff + _internal_general_logs._buff_len, __VA_ARGS__);                                                              					\
-        _internal_general_logs._buff[_internal_general_logs._buff_len++] = '\n';                                                                                                                  					\
-        DEBUG_DUMP_GENERAL_LOGS();                                                                                                                                                                                                        \
-    } while (0)
+#               define LOG(...)                                                                                                                                                                                              \
+                        do {                                                                                                                                                                                                 \
+                                const i32 _to_be_written = snprintf(NULL, 0, __VA_ARGS__);                                                                                                                                   \
+                                if (_to_be_written >= ENN_MAX_LOG_BUFF_SIZE) break;                                                                                                                                          \
+                                const struct tm _current_time = *localtime(&(time_t) { time(NULL) });                                                                                                                        \
+                                if (_internal_general_logs._buff_len + (sizeof ENN_LOG_TIME_FORMAT) * 2 >= ENN_MAX_LOG_BUFF_SIZE)                                                                                            \
+                                DEBUG_DUMP_GENERAL_LOGS();                                                                                                                                                                   \
+                                _internal_general_logs._buff_len += strftime(_internal_general_logs._buff + _internal_general_logs._buff_len, (sizeof ENN_LOG_TIME_FORMAT) * 2, ENN_LOG_TIME_FORMAT, &_current_time);        \
+                                if (_internal_general_logs._buff_len + _to_be_written >= ENN_MAX_LOG_BUFF_SIZE)                                                                                                              \
+                                DEBUG_DUMP_GENERAL_LOGS();                                                                                                                                                                   \
+                                _internal_general_logs._buff_len += sprintf(_internal_general_logs._buff + _internal_general_logs._buff_len, __VA_ARGS__);                                                                   \
+                                _internal_general_logs._buff[_internal_general_logs._buff_len++] = '\n';                                                                                                                     \
+                                DEBUG_DUMP_GENERAL_LOGS();                                                                                                                                                                   \
+                        } while (0)                                                                                                                                                                                      
 #       else
-#               define LOG(...)                                                                                                                                                                                    						\
-    do {                                                                                                                                                                                            					\
-        const i32 _to_be_written = snprintf(NULL, 0, __VA_ARGS__);                                                                                                                                    					\
-        if (_to_be_written >= ENN_MAX_LOG_BUFF_SIZE) break;                                                                                                                                     					\
-        const struct tm _current_time = *localtime(&(time_t) { time(NULL) });					                                                                                        				\
-        if (_internal_general_logs._buff_len + (sizeof ENN_LOG_TIME_FORMAT) * 2 >= ENN_MAX_LOG_BUFF_SIZE)                                                                                      						\
-        DEBUG_DUMP_GENERAL_LOGS();																							        \
-        _internal_general_logs._buff_len += strftime(_internal_general_logs._buff + _internal_general_logs._buff_len, (sizeof ENN_LOG_TIME_FORMAT) * 2, ENN_LOG_TIME_FORMAT, &_current_time);   					\
-        if (_internal_general_logs._buff_len + _to_be_written >= ENN_MAX_LOG_BUFF_SIZE)                                                                                                        						\
-        DEBUG_DUMP_GENERAL_LOGS();																							        \
-        _internal_general_logs._buff_len += sprintf(_internal_general_logs._buff + _internal_general_logs._buff_len, __VA_ARGS__);                                                              					\
-        _internal_general_logs._buff[_internal_general_logs._buff_len++] = '\n';                                                                                                                  					\
-    } while (0)
+#               define LOG(...)                                                                                                                                                                                              \
+                        do {                                                                                                                                                                                                 \
+                                const i32 _to_be_written = snprintf(NULL, 0, __VA_ARGS__);                                                                                                                                   \
+                                if (_to_be_written >= ENN_MAX_LOG_BUFF_SIZE) break;                                                                                                                                          \
+                                const struct tm _current_time = *localtime(&(time_t) { time(NULL) });                                                                                                                        \
+                                if (_internal_general_logs._buff_len + (sizeof ENN_LOG_TIME_FORMAT) * 2 >= ENN_MAX_LOG_BUFF_SIZE)                                                                                            \
+                                DEBUG_DUMP_GENERAL_LOGS();                                                                                                                                                                   \
+                                _internal_general_logs._buff_len += strftime(_internal_general_logs._buff + _internal_general_logs._buff_len, (sizeof ENN_LOG_TIME_FORMAT) * 2, ENN_LOG_TIME_FORMAT, &_current_time);        \
+                                if (_internal_general_logs._buff_len + _to_be_written >= ENN_MAX_LOG_BUFF_SIZE)                                                                                                              \
+                                DEBUG_DUMP_GENERAL_LOGS();                                                                                                                                                                   \
+                                _internal_general_logs._buff_len += sprintf(_internal_general_logs._buff + _internal_general_logs._buff_len, __VA_ARGS__);                                                                   \
+                                _internal_general_logs._buff[_internal_general_logs._buff_len++] = '\n';                                                                                                                     \
+                        } while (0)
 #       endif
 #endif
 
@@ -532,11 +531,12 @@ extern "C" {
 # 	define vector_new() { .data = NULL, .capacity = 0, .start = 0, .end = 0 }
 # 	define vector_size(_vec) ((_vec).end - (_vec).start)
 
-# 	define vector_clear(_vec) 																												\
-    do {																														\
-        DEBUG_TRACE(vector_clear);																										\
-        (_vec).start = 0;																											\
-        (_vec).end   = 0;																											\
+#define vector_clear(_vec)             \
+    do                                 \
+    {                                  \
+            DEBUG_TRACE(vector_clear); \
+            (_vec).start = 0;          \
+            (_vec).end = 0;            \
     } while (0)
 
 # 	define vector_destroy(_vec)																											        \
@@ -642,6 +642,28 @@ extern "C" {
         DEBUG_ASSERT(vector_size(_vec) > 0, "Requested removal on empty vector '%s'", TO_STR(_vec));																	        \
         DEBUG_ASSERT(((_idx) >= (_vec).start) && ((_idx) < (_vec).end), "Requested removal at index '%s' which is outside of vector '%s'", TO_STR(_idx), TO_STR(_vec));									        \
         swap((_vec).data[(_idx)], (_vec).data[vector_size(_vec) - 1]);																					        \
+        --(_vec).end;																											        \
+        DEBUG_UNTRACE();																											\
+    } while (0)
+
+#	define vector_remove_at_address_keep_order(_vec, _ptr)																	        \
+    do {																													        \
+        DEBUG_TRACE(vector_remove_at_address_keep_order);																						\
+        DEBUG_ASSERT(vector_size(_vec) > 0, "Requested removal from empty vector '%s'", TO_STR(_vec));																	        \
+        DEBUG_ASSERT((_ptr) != NULL, "Requested removal at address '%s' which is NULL from vector '%s'", TO_STR(_ptr), TO_STR(_vec));													        \
+        DEBUG_ASSERT((sizeof (*(_vec).data)) == (sizeof (*(_ptr))), "Requested removal at address '%s' from vector '%s' of different size", TO_STR(_ptr), TO_STR(_vec));								        \
+        DEBUG_ASSERT(((_ptr) >= (_vec).data + (_vec).start) && ((_ptr) < (_vec).data + (_vec).end), "Requested removal at address '%s' which is outside of vector '%s'", TO_STR(_ptr), TO_STR(_vec));					        \
+        memmove((_ptr), (_ptr) + 1, (size_t)(((_vec).data + (_vec).end) - ((_ptr) + 1)) * sizeof(*(_vec).data));															        \
+        --(_vec).end;																											        \
+        DEBUG_UNTRACE();																											\
+    } while (0)
+
+#	define vector_remove_at_index_keep_order(_vec, _idx)																									        \
+    do {																													        \
+        DEBUG_TRACE(vector_remove_at_index_keep_order);																							\
+        DEBUG_ASSERT(vector_size(_vec) > 0, "Requested removal on empty vector '%s'", TO_STR(_vec));																	        \
+        DEBUG_ASSERT(((_idx) >= (_vec).start) && ((_idx) < (_vec).end), "Requested removal at index '%s' which is outside of vector '%s'", TO_STR(_idx), TO_STR(_vec));									        \
+        memmove(&(_vec).data[(_idx)], &(_vec).data[(_idx) + 1], (size_t)((_vec).end - (_idx) - 1) * sizeof(*(_vec).data));														        \
         --(_vec).end;																											        \
         DEBUG_UNTRACE();																											\
     } while (0)
@@ -1248,49 +1270,49 @@ ENNDEF_PUBLIC vector(pair(i32, i32)) string_tokenize(const string* str, const ch
 
 /* ---------- Math Helpers ---------- */
 
-typedef struct { f32 x, y; } 		f32vec2;
-typedef struct { f32 x, y, z; } 	f32vec3;
-typedef struct { f32 x, y, z, w; } 	f32vec4;
+typedef struct f32vec2 { f32 x, y; } 		f32vec2;
+typedef struct f32vec3 { f32 x, y, z; } 	f32vec3;
+typedef struct f32vec4 { f32 x, y, z, w; } 	f32vec4;
 
-typedef struct { f64 x, y; } 		f64vec2;
-typedef struct { f64 x, y, z; } 	f64vec3;
-typedef struct { f64 x, y, z, w; } 	f64vec4;
+typedef struct f64vec2 { f64 x, y; } 		f64vec2;
+typedef struct f64vec3 { f64 x, y, z; } 	f64vec3;
+typedef struct f64vec4 { f64 x, y, z, w; } 	f64vec4;
 
-typedef struct { f128 x, y; } 		f128vec2;
-typedef struct { f128 x, y, z; } 	f128vec3;
-typedef struct { f128 x, y, z, w; }     f128vec4;
+typedef struct f128vec2 { f128 x, y; } 		f128vec2;
+typedef struct f128vec3 { f128 x, y, z; } 	f128vec3;
+typedef struct f128vec4 { f128 x, y, z, w; }     f128vec4;
 
-typedef struct { i8 x, y; } 		i8vec2;
-typedef struct { i8 x, y, z; } 	        i8vec3;
-typedef struct { i8 x, y, z, w; } 	i8vec4;
+typedef struct i8vec2 { i8 x, y; } 		i8vec2;
+typedef struct i8vec3 { i8 x, y, z; } 	        i8vec3;
+typedef struct i8vec4 { i8 x, y, z, w; } 	i8vec4;
 
-typedef struct { i16 x, y; } 		i16vec2;
-typedef struct { i16 x, y, z; } 	i16vec3;
-typedef struct { i16 x, y, z, w; } 	i16vec4;
+typedef struct i16vec2 { i16 x, y; } 		i16vec2;
+typedef struct i16vec3 { i16 x, y, z; } 	i16vec3;
+typedef struct i16vec4 { i16 x, y, z, w; } 	i16vec4;
 
-typedef struct { i32 x, y; } 		i32vec2;
-typedef struct { i32 x, y, z; } 	i32vec3;
-typedef struct { i32 x, y, z, w; } 	i32vec4;
+typedef struct i32vec2 { i32 x, y; } 		i32vec2;
+typedef struct i32vec3 { i32 x, y, z; } 	i32vec3;
+typedef struct i32vec4 { i32 x, y, z, w; } 	i32vec4;
 
-typedef struct { i64 x, y; } 		i64vec2;
-typedef struct { i64 x, y, z; } 	i64vec3;
-typedef struct { i64 x, y, z, w; } 	i64vec4;
+typedef struct i64vec2 { i64 x, y; } 		i64vec2;
+typedef struct i64vec3 { i64 x, y, z; } 	i64vec3;
+typedef struct i64vec4 { i64 x, y, z, w; } 	i64vec4;
 
-typedef struct { u8 x, y; } 		u8uvec2;
-typedef struct { u8 x, y, z; } 	        u8uvec3;
-typedef struct { u8 x, y, z, w; } 	u8uvec4;
+typedef struct u8uvec2 { u8 x, y; } 		u8uvec2;
+typedef struct u8uvec3 { u8 x, y, z; } 	        u8uvec3;
+typedef struct u8uvec4 { u8 x, y, z, w; } 	u8uvec4;
 
-typedef struct { u16 x, y; } 		u16uvec2;
-typedef struct { u16 x, y, z; } 	u16uvec3;
-typedef struct { u16 x, y, z, w; } 	u16uvec4;
+typedef struct u16uvec2 { u16 x, y; } 		u16uvec2;
+typedef struct u16uvec3 { u16 x, y, z; } 	u16uvec3;
+typedef struct u16uvec4 { u16 x, y, z, w; } 	u16uvec4;
 
-typedef struct { u32 x, y; } 		u32uvec2;
-typedef struct { u32 x, y, z; } 	u32uvec3;
-typedef struct { u32 x, y, z, w; } 	u32uvec4;
+typedef struct u32uvec2 { u32 x, y; } 		u32uvec2;
+typedef struct u32uvec3 { u32 x, y, z; } 	u32uvec3;
+typedef struct u32uvec4 { u32 x, y, z, w; } 	u32uvec4;
 
-typedef struct { u64 x, y; } 		u64uvec2;
-typedef struct { u64 x, y, z; } 	u64uvec3;
-typedef struct { u64 x, y, z, w; } 	u64uvec4;
+typedef struct u64uvec2 { u64 x, y; } 		u64uvec2;
+typedef struct u64uvec3 { u64 x, y, z; } 	u64uvec3;
+typedef struct u64uvec4 { u64 x, y, z, w; } 	u64uvec4;
 
 typedef f32                             f32mat4[16];
 typedef f32                             f32mat3[9];

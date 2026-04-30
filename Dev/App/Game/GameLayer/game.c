@@ -6,13 +6,13 @@
 LayerID game_layer_id;
 
 void game_layer_init(void) {
-        LOG("sizeof internal pin = %zu", (sizeof (InternalPin)));
 }
 
 void game_layer_term(void) {
 }
 
 void game_layer_on_render(void) {
+        DEBUG_TRACE();
         // render_proj_set((f32mat4) {
         //         2 / map_view.visible_pixels.x * map_view.zoom, 0, 0, -(2 * map_view.camera_offset.x ) / map_view.visible_pixels.x * map_view.zoom - 1.0,
         //         0, -(2 / map_view.visible_pixels.y * map_view.zoom), 0, (2 * map_view.camera_offset.y) / map_view.visible_pixels.y * map_view.zoom + 1.0,
@@ -23,12 +23,14 @@ void game_layer_on_render(void) {
                 (f32vec2) { -20, -20 },
                 (f32vec2) { 20, 20 },
                 0xFF0000FF);
+        DEBUG_UNTRACE();
 }
 
 void game_layer_on_update(f64 dt) {
 }
 
 void game_layer_on_event(Event* event) {
+        DEBUG_TRACE();
         switch (event -> type) {
                 case ENN_INPUT_KEY_EVENT:
                 {
@@ -46,4 +48,5 @@ void game_layer_on_event(Event* event) {
                 }
                 default: break;
         }
+        DEBUG_UNTRACE();
 }
