@@ -70,14 +70,14 @@ void settings_layer_init(void) {
                                 .id             = DEBUG_MODE_BUTTON_ID,
                                 .pos            = { -0.7, -0.15 },
                                 .color          = 0xFFFFFFFF,
-                                .text           = "DEBUG INFORMATION                ",
+                                .text           = "PERFORMANCE INFO                 ",
                                 .text_height    = 0.075
                         },
                         (UITextButtonData) {
                                 .id             = FULLSCREEN_BUTTON_ID,
                                 .pos            = { -0.7, -0.075 },
                                 .color          = 0xFFFFFFFF,
-                                .text           = "FULLSCREEN MODE                  ",
+                                .text           = "FULLSCREEN                       ",
                                 .text_height    = 0.075
                         },
                         (UITextButtonData) {

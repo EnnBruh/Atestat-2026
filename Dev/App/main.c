@@ -12,7 +12,8 @@ signed main(void) {
                 .height = settings.resolution.y,
                 .is_resizable = true,
                 .has_msaa = true,
-                .has_vsync = settings.vsync 
+                .has_vsync = settings.vsync,
+                .is_fullscreen = settings.fullscreen
         });
 
         render_init();

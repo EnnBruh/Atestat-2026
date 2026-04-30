@@ -9,19 +9,20 @@ typedef struct Vertex {
         f32vec2         texture_pos;
 } Vertex;
 
-
 #define ENN_RENDER_VERTEX_BUFF_SIZE 16384
 
 typedef GLint UniformLocation;
 
 #define ENN_FONT_ATLAS_FIRST_CHAR ' '
 #define ENN_FONT_ATLAS_LAST_CHAR '~'
+
 extern struct Renderer {
         Vertex          buff[ENN_RENDER_VERTEX_BUFF_SIZE];
         i32             buff_size;
 
         VAOID           vao;
         VBOID           vbo;
+        u32             ebo;
         ShaderID        shader;
 
         UniformLocation proj_matrix_location;
@@ -67,6 +68,5 @@ typedef enum ENN_TEXT_ALIGN {
 } ENN_TEXT_ALIGN;
 
 ENNDEF_PRIVATE void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align);
-
 
 #endif

@@ -35,14 +35,6 @@ ENNDEF_PUBLIC void render_init_font_atlas(void) {
                 global_render.font_atlas.char_sprite[i].y = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
                 global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
                 global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
-
-                // swap(global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y, global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w);
-
-                // LOG("ch = '%c' pos = %f %f %f %f", ch,
-                //         global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x,
-                //         global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y,
-                //         global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z,
-                //         global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w);
         }
 
         DEBUG_UNTRACE();
@@ -51,12 +43,28 @@ ENNDEF_PUBLIC void render_init_font_atlas(void) {
 void render_init(void) {
         DEBUG_TRACE();
         glGenBuffers(1, &global_render.vbo);
+        glGenBuffers(1, &global_render.ebo);
         glGenVertexArrays(1, &global_render.vao);
 
+        glBindVertexArray(global_render.vao);
+        
         glBindBuffer(GL_ARRAY_BUFFER, global_render.vbo);
         glBufferData(GL_ARRAY_BUFFER, (sizeof (Vertex)) * ENN_RENDER_VERTEX_BUFF_SIZE, NULL, GL_DYNAMIC_DRAW);
 
-        glBindVertexArray(global_render.vao);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, global_render.ebo);
+        
+        u32* indices = malloc((sizeof (u32)) * (ENN_RENDER_VERTEX_BUFF_SIZE / 4) * 6);
+        for (i32 i = 0, j = 0; i < ENN_RENDER_VERTEX_BUFF_SIZE; i += 4, j += 6) {
+                indices[j + 0] = i + 0;
+                indices[j + 1] = i + 1;
+                indices[j + 2] = i + 2;
+                indices[j + 3] = i + 2;
+                indices[j + 4] = i + 1;
+                indices[j + 5] = i + 3;
+        }
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof (u32)) * (ENN_RENDER_VERTEX_BUFF_SIZE / 4) * 6, indices, GL_STATIC_DRAW);
+        free(indices);
+
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, (sizeof (Vertex)), (void *)offsetof(Vertex, pos));
         glEnableVertexAttribArray(0);
 
@@ -82,12 +90,12 @@ void render_init(void) {
 
         global_render.proj_matrix_location = glGetUniformLocation(global_render.shader, "projection");
 
-
         DEBUG_UNTRACE();
 }
 
 void render_term(void) {
         DEBUG_TRACE();
+        glDeleteBuffers(1, &global_render.ebo);
         glDeleteBuffers(1, &global_render.vbo);
         glDeleteVertexArrays(1, &global_render.vao);
         DEBUG_UNTRACE();
@@ -104,7 +112,7 @@ void render_buff_draw(void) {
                 glBindTexture(GL_TEXTURE_2D, global_render.sprite_sheet_id);
 
                 glBufferSubData(GL_ARRAY_BUFFER, 0, (sizeof (Vertex)) * global_render.buff_size, global_render.buff);
-                glDrawArrays(GL_TRIANGLES, 0, global_render.buff_size);
+                glDrawElements(GL_TRIANGLES, (global_render.buff_size / 4) * 6, GL_UNSIGNED_INT, (void*)0);
                 
                 global_state.drawn_vertices += global_render.buff_size;
                 global_render.buff_size = 0;
@@ -115,8 +123,6 @@ void render_buff_draw(void) {
 
 Sprite render_sprite_create(Image* texture, i32vec2 texture_top_left, i32vec2 texture_bott_right) {
         DEBUG_ASSERT(texture != NULL);
-        // LOG("%" PRIi32 " %" PRIi32 " %" PRIi32 " %" PRIi32, texture_top_left.x, texture_top_left.y, texture_bott_right.x, texture_bott_right.y);
-        // LOG("%" PRIi32  " %" PRIi32, texture -> width, texture -> height);
         return (Sprite) {
                 .img = texture,
                 .texture_top_left = (f32vec2) {
@@ -155,7 +161,7 @@ void render_rectangle_push(f32vec2 top_left, f32vec2 bott_right, u32 color) {
 
 void render_sprite_push_color(f32vec2 top_left, f32vec2 bott_right, Sprite* sprite, u32 color) {
         DEBUG_TRACE();
-        if (global_render.buff_size + 6 > ENN_RENDER_VERTEX_BUFF_SIZE)
+        if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
                 render_buff_draw();
 
         Vertex* vert = &(global_render.buff[global_render.buff_size]);
@@ -165,40 +171,28 @@ void render_sprite_push_color(f32vec2 top_left, f32vec2 bott_right, Sprite* spri
         vert[0].texture_pos = sprite -> texture_top_left;
 
         vert[1].pos.x = top_left.x;
+        vert[1].pos.y = bott_right.y;
         vert[1].color = color;
         vert[1].texture_pos.x = sprite -> texture_top_left.x;
-        vert[1].pos.y = bott_right.y;
         vert[1].texture_pos.y = sprite -> texture_bott_right.y;
 
         vert[2].pos.x = bott_right.x;
+        vert[2].pos.y = top_left.y;
         vert[2].color = color;
         vert[2].texture_pos.x = sprite -> texture_bott_right.x;
-        vert[2].pos.y = top_left.y;
         vert[2].texture_pos.y = sprite -> texture_top_left.y;
 
-        vert[3].pos.x = bott_right.x;
+        vert[3].pos = bott_right;
         vert[3].color = color;
-        vert[3].texture_pos.x = sprite -> texture_bott_right.x;
-        vert[3].pos.y = top_left.y;
-        vert[3].texture_pos.y = sprite -> texture_top_left.y;
+        vert[3].texture_pos = sprite -> texture_bott_right;
 
-        vert[4].pos.x = top_left.x;
-        vert[4].color = color;
-        vert[4].texture_pos.x = sprite -> texture_top_left.x;
-        vert[4].pos.y = bott_right.y;
-        vert[4].texture_pos.y = sprite -> texture_bott_right.y;
-
-        vert[5].pos = bott_right;
-        vert[5].color = color;
-        vert[5].texture_pos = sprite -> texture_bott_right;
-
-        global_render.buff_size += 6;
+        global_render.buff_size += 4;
         DEBUG_UNTRACE();
 }
 
 void render_sprite_push(f32vec2 top_left, f32vec2 bott_right, Sprite* sprite) {
         DEBUG_TRACE();
-        if (global_render.buff_size + 6 > ENN_RENDER_VERTEX_BUFF_SIZE)
+        if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
                 render_buff_draw();
 
         Vertex* vert = &(global_render.buff[global_render.buff_size]);
@@ -208,34 +202,22 @@ void render_sprite_push(f32vec2 top_left, f32vec2 bott_right, Sprite* sprite) {
         vert[0].texture_pos = sprite -> texture_top_left;
 
         vert[1].pos.x = top_left.x;
+        vert[1].pos.y = bott_right.y;
         vert[1].color = 0xFFFFFFFF;
         vert[1].texture_pos.x = sprite -> texture_top_left.x;
-        vert[1].pos.y = bott_right.y;
         vert[1].texture_pos.y = sprite -> texture_bott_right.y;
 
         vert[2].pos.x = bott_right.x;
+        vert[2].pos.y = top_left.y;
         vert[2].color = 0xFFFFFFFF;
         vert[2].texture_pos.x = sprite -> texture_bott_right.x;
-        vert[2].pos.y = top_left.y;
         vert[2].texture_pos.y = sprite -> texture_top_left.y;
 
-        vert[3].pos.x = bott_right.x;
+        vert[3].pos = bott_right;
         vert[3].color = 0xFFFFFFFF;
-        vert[3].texture_pos.x = sprite -> texture_bott_right.x;
-        vert[3].pos.y = top_left.y;
-        vert[3].texture_pos.y = sprite -> texture_top_left.y;
+        vert[3].texture_pos = sprite -> texture_bott_right;
 
-        vert[4].pos.x = top_left.x;
-        vert[4].color = 0xFFFFFFFF;
-        vert[4].texture_pos.x = sprite -> texture_top_left.x;
-        vert[4].pos.y = bott_right.y;
-        vert[4].texture_pos.y = sprite -> texture_bott_right.y;
-
-        vert[5].pos = bott_right;
-        vert[5].color = 0xFFFFFFFF;
-        vert[5].texture_pos = sprite -> texture_bott_right;
-
-        global_render.buff_size += 6;
+        global_render.buff_size += 4;
         DEBUG_UNTRACE();
 }
 
@@ -254,7 +236,6 @@ void render_sprite_flip_horizontal(Sprite* sprite) {
 void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align) {
         DEBUG_TRACE();
         if (text == NULL) {
-                // DEBUG_LOG_WARN("[Rendering] No text recieved. Render request ignored");
                 return ;
         }
 
@@ -293,7 +274,7 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
 
                 if (ch >= 'a' && ch <= 'z') ch -= ('a' - 'A');
 
-                if (global_render.buff_size + 6 > ENN_RENDER_VERTEX_BUFF_SIZE)
+                if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
                         render_buff_draw();
 
                 Vertex *vert = &(global_render.buff[global_render.buff_size]);
@@ -304,36 +285,24 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
                 vert[0].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
 
                 vert[1].pos.x = cursor.x;
+                vert[1].pos.y = cursor.y + text_height;
                 vert[1].color = color;
                 vert[1].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
-                vert[1].pos.y = cursor.y + text_height;
                 vert[1].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
 
                 vert[2].pos.x = cursor.x + text_width;
+                vert[2].pos.y = cursor.y;
                 vert[2].color = color;
                 vert[2].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
-                vert[2].pos.y = cursor.y;
                 vert[2].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
 
                 vert[3].pos.x = cursor.x + text_width;
+                vert[3].pos.y = cursor.y + text_height;
                 vert[3].color = color;
                 vert[3].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
-                vert[3].pos.y = cursor.y;
-                vert[3].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
+                vert[3].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
 
-                vert[4].pos.x = cursor.x;
-                vert[4].color = color;
-                vert[4].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
-                vert[4].pos.y = cursor.y + text_height;
-                vert[4].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
-
-                vert[5].pos.x = cursor.x + text_width;
-                vert[5].pos.y = cursor.y + text_height;
-                vert[5].color = color;
-                vert[5].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
-                vert[5].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
-
-                global_render.buff_size += 6;
+                global_render.buff_size += 4;
                 cursor.x += text_width;
         }
         DEBUG_UNTRACE();
@@ -349,10 +318,11 @@ void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color) {
                 .y = (pos2.x - pos1.x) * half
         };
 
-        if (global_render.buff_size + 6 > ENN_RENDER_VERTEX_BUFF_SIZE)
+        if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
                 render_buff_draw();
         
         Vertex* vert = &global_render.buff[global_render.buff_size];
+        
         vert[0].pos.x = pos1.x + normal.x;
         vert[0].pos.y = pos1.y + normal.y;
         vert[0].color = color;
@@ -368,13 +338,10 @@ void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color) {
         vert[2].color = color;
         vert[2].texture_pos = WHITE_TEXTURE.texture_top_left;
 
-        vert[3] = vert[2];
-        vert[4] = vert[1];
+        vert[3].pos.x = pos2.x - normal.x;
+        vert[3].pos.y = pos2.y - normal.y;
+        vert[3].color = color;
+        vert[3].texture_pos = WHITE_TEXTURE.texture_top_left;
 
-        vert[5].pos.x = pos2.x - normal.x;
-        vert[5].pos.y = pos2.y - normal.y;
-        vert[5].color = color;
-        vert[5].texture_pos = WHITE_TEXTURE.texture_top_left;
-
-        global_render.buff_size += 6;
+        global_render.buff_size += 4;
 }
