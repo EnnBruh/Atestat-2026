@@ -19,6 +19,7 @@ ENNDEF_PUBLIC ENN_CMP workspace_cmp(WorkspaceData a, WorkspaceData b) {
 static UITextButtonList buttons;
 static vector(WorkspaceData) workspaces;
 static WorkspaceData* selected_workspace;
+static WorkspaceData* hovered_workspace;
 
 static vector(char) input_string;
 static bool typing_state;
@@ -29,62 +30,63 @@ static bool name_conflict_error;
 static f32 workspace_list_offset;
 static bool is_dragging_scrollbar;
 
-#define ENN_WORKSPACES_BOX_X -0.205
-#define ENN_WORKSPACES_BOX_Y -0.4
-#define ENN_WORKSPACES_BOX_Z 0.8
-#define ENN_WORKSPACES_BOX_W 0.5
+#define ENN_WORKSPACES_BOX_X                -0.205
+#define ENN_WORKSPACES_BOX_Y                -0.4
+#define ENN_WORKSPACES_BOX_Z                0.8
+#define ENN_WORKSPACES_BOX_W                0.5
 
-#define ENN_WORKSPACE_LIST_SCROLL_CHANGE 0.035
+#define ENN_WORKSPACE_LIST_SCROLL_CHANGE    0.035
 
-#define ENN_CREATE_WORKSPACE_BUTTON_ID 0x001
-#define ENN_DELETE_WORKSPACE_BUTTON_ID 0x002
-#define ENN_OPEN_WORKSPACE_BUTTON_ID   0x003
-#define ENN_BACK_BUTTON_ID             0x004
+#define ENN_CREATE_WORKSPACE_BUTTON_ID      0x001
+#define ENN_DELETE_WORKSPACE_BUTTON_ID      0x002
+#define ENN_OPEN_WORKSPACE_BUTTON_ID        0x003
+#define ENN_BACK_BUTTON_ID                  0x004
 
-#define ENN_BKG_COLOR 0x101214FF
-#define ENN_WORKSPACES_BOX_COLOR 0x151819FF
-#define ENN_BUTTON_LIST_COLOR 0x505050FF
-#define ENN_TEXT_COLOR_WHITE 0xFFFFFFFF
-#define ENN_TEXT_COLOR_RED 0xd75f5fFF
-#define ENN_TEXT_COLOR_MUTED 0x505050FF
-#define ENN_SELECTED_WORKSPACE_COLOR 0xFFFFFF30
-#define ENN_SCROLLBAR_BG_COLOR 0x202020FF
-#define ENN_SCROLLBAR_DRAG_COLOR 0x808080FF
-#define ENN_SCROLLBAR_HANDLE_COLOR 0x505050FF
-#define ENN_TYPING_OVERLAY_COLOR 0x00000050
+#define ENN_BKG_COLOR                       0x101214FF
+#define ENN_WORKSPACES_BOX_COLOR            0x151819FF
+#define ENN_BUTTON_LIST_COLOR               0x505050FF
+#define ENN_TEXT_COLOR_WHITE                0xFFFFFFFF
+#define ENN_TEXT_COLOR_RED                  0xd75f5fFF
+#define ENN_TEXT_COLOR_MUTED                0x505050FF
+#define ENN_SELECTED_WORKSPACE_COLOR        0xFFFFFF30
+#define ENN_HOVERED_WORKSPACE_COLOR         0xFFFFFF15
+#define ENN_SCROLLBAR_BG_COLOR              0x202020FF
+#define ENN_SCROLLBAR_DRAG_COLOR            0x808080FF
+#define ENN_SCROLLBAR_HANDLE_COLOR          0x505050FF
+#define ENN_TYPING_OVERLAY_COLOR            0x00000050
 
-#define ENN_SAVE_DATA_FMT "LAST SAVE: %Y.%m.%d|%H:%M:%S"
-#define ENN_SAVE_DATA_TEXT_HEIGHT 0.035
+#define ENN_SAVE_DATA_FMT                   "LAST SAVE: %Y.%m.%d|%H:%M:%S"
+#define ENN_SAVE_DATA_TEXT_HEIGHT           0.035
 
-#define ENN_INPUT_STRING_TEXT_HEIGHT 0.2
-#define ENN_CURSOR_CHANGE_TIME 0.5
+#define ENN_INPUT_STRING_TEXT_HEIGHT        0.2
+#define ENN_CURSOR_CHANGE_TIME              0.5
 
-#define ENN_MAIN_BUTTON_COUNT 4
-#define ENN_BUTTON_TEXT_HEIGHT 0.075
-#define ENN_BUTTON_POS_X -0.85
-#define ENN_BUTTON_SPACING 0.1
+#define ENN_MAIN_BUTTON_COUNT               4
+#define ENN_BUTTON_TEXT_HEIGHT              0.075
+#define ENN_BUTTON_POS_X                    -0.85
+#define ENN_BUTTON_SPACING                  0.1
 
-#define ENN_WORKSPACE_ITEM_DIM_Y 0.05
-#define ENN_WORKSPACE_ITEM_SPACING 0.11
-#define ENN_WORKSPACE_ITEM_TEXT_HEIGHT 0.05
+#define ENN_WORKSPACE_ITEM_DIM_Y            0.05
+#define ENN_WORKSPACE_ITEM_SPACING          0.11
+#define ENN_WORKSPACE_ITEM_TEXT_HEIGHT      0.05
 
-#define ENN_WORKSPACES_BORDER_WIDTH 0.02
-#define ENN_SCROLLBAR_WIDTH 0.03
+#define ENN_WORKSPACES_BORDER_WIDTH         0.02
+#define ENN_SCROLLBAR_WIDTH                 0.03
 
-#define ENN_SCREEN_MIN_COORD -1.0
-#define ENN_SCREEN_MAX_COORD 1.0
+#define ENN_SCREEN_MIN_COORD                -1.0
+#define ENN_SCREEN_MAX_COORD                1.0
 
-#define ENN_TITLE_TEXT_POS_X1 -0.475
-#define ENN_TITLE_TEXT_POS_Y1 -0.75
-#define ENN_TITLE_TEXT_POS_X2 0.475
-#define ENN_TITLE_TEXT_POS_Y2 -0.65
-#define ENN_TITLE_TEXT_HEIGHT 0.1
-#define ENN_TITLE_TEXT_STRING "SELECT A WORKSPACE"
+#define ENN_TITLE_TEXT_POS_X1               -0.475
+#define ENN_TITLE_TEXT_POS_Y1               -0.75
+#define ENN_TITLE_TEXT_POS_X2               0.475
+#define ENN_TITLE_TEXT_POS_Y2               -0.65
+#define ENN_TITLE_TEXT_HEIGHT               0.1
+#define ENN_TITLE_TEXT_STRING               "SELECT A WORKSPACE"
 
-#define ENN_ERROR_TEXT_HEIGHT 0.05
-#define ENN_ERROR_TEXT_POS_Y1 0.4
-#define ENN_ERROR_TEXT_POS_Y2 0.5
-#define ENN_ERROR_TEXT_STRING "ERROR: A WORKSPACE WITH THAT NAME ALREADY EXISTS"
+#define ENN_ERROR_TEXT_HEIGHT               0.05
+#define ENN_ERROR_TEXT_POS_Y1               0.4
+#define ENN_ERROR_TEXT_POS_Y2               0.5
+#define ENN_ERROR_TEXT_STRING               "ERROR: A WORKSPACE WITH THAT NAME ALREADY EXISTS"
 
 static const f32vec4 workspaces_box = {
         .x = ENN_WORKSPACES_BOX_X,
@@ -95,6 +97,10 @@ static const f32vec4 workspaces_box = {
 
 void workspace_layer_init(void) {
         DEBUG_TRACE();
+        
+        selected_workspace = NULL;
+        hovered_workspace = NULL;
+
         ui_text_button_list_init(
                 &buttons, ENN_LEFT_ALIGN, ENN_BUTTON_LIST_COLOR,
                 (UITextButtonData[]) {
@@ -182,6 +188,8 @@ void workspace_layer_term(void) {
         }
         vector_destroy(workspaces);
         vector_destroy(input_string);
+        selected_workspace = NULL;
+        hovered_workspace = NULL;
         DEBUG_UNTRACE();
 }
 
@@ -200,7 +208,6 @@ void workspace_layer_on_render(void) {
                 ENN_BKG_COLOR
         );
 
-        ui_text_button_list_render(&buttons);
 
         render_rectangle_push(
                 (f32vec2) { workspaces_box.x, workspaces_box.y },
@@ -219,6 +226,14 @@ void workspace_layer_on_render(void) {
                         (f32vec2) { workspaces.data[i].pos.x, workspaces.data[i].pos.y + workspaces.data[i].dim.y },
                         (f32vec2) { workspaces.data[i].pos.x, workspaces.data[i].pos.y + workspaces.data[i].dim.y },
                         workspaces.data[i].workspace_last_modified, ENN_TEXT_COLOR_MUTED, ENN_SAVE_DATA_TEXT_HEIGHT, ENN_LEFT_ALIGN
+                );
+        }
+
+        if (hovered_workspace != NULL && hovered_workspace != selected_workspace) {
+                render_rectangle_push(
+                        (f32vec2) { workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH, hovered_workspace -> pos.y },
+                        (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH, hovered_workspace -> pos.y + hovered_workspace -> dim.y + ENN_SAVE_DATA_TEXT_HEIGHT },
+                        ENN_HOVERED_WORKSPACE_COLOR
                 );
         }
 
@@ -241,13 +256,13 @@ void workspace_layer_on_render(void) {
                 ENN_WORKSPACES_BOX_COLOR
         );
         render_rectangle_push(
-                (f32vec2) { workspaces_box.x, workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH },
-                (f32vec2) { workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH, workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH },
+                (f32vec2) { workspaces_box.x, workspaces_box.y },
+                (f32vec2) { workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH, workspaces_box.w },
                 ENN_WORKSPACES_BOX_COLOR
         );
         render_rectangle_push(
-                (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH, workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH },
-                (f32vec2) { workspaces_box.z, workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH },
+                (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH, workspaces_box.y },
+                (f32vec2) { workspaces_box.z, workspaces_box.w },
                 ENN_WORKSPACES_BOX_COLOR
         );
 
@@ -255,35 +270,34 @@ void workspace_layer_on_render(void) {
         f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
         f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
         f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
-        if (min_offset < 0.0) {
-                f32 handle_ratio = visible_h / content_h;
-                if (handle_ratio > 1.0) handle_ratio = 1.0;
-                f32 handle_h = visible_h * handle_ratio;
-                f32 scroll_ratio = (workspace_list_offset / min_offset);
-                f32 handle_y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + scroll_ratio * (visible_h - handle_h);
-
-                render_rectangle_push(
-                        (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH, workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH },
-                        (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH, workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH },
-                        ENN_SCROLLBAR_BG_COLOR
-                );
-
-                render_rectangle_push(
-                        (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH, handle_y },
-                        (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH, handle_y + handle_h },
-                        is_dragging_scrollbar ? ENN_SCROLLBAR_DRAG_COLOR : ENN_SCROLLBAR_HANDLE_COLOR
-                );
-        }
+        
+        f32 handle_ratio = (content_h > 0.0) ? (visible_h / content_h) : 1.0;
+        if (handle_ratio > 1.0) handle_ratio = 1.0;
+        f32 handle_h = visible_h * handle_ratio;
+        f32 scroll_ratio = (min_offset < 0.0) ? (workspace_list_offset / min_offset) : 0.0;
+        f32 handle_y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + scroll_ratio * (visible_h - handle_h);
 
         render_rectangle_push(
-                (f32vec2) { workspaces_box.x, workspaces_box.y },
-                (f32vec2) { ENN_SCREEN_MAX_COORD, ENN_SCREEN_MIN_COORD },
+                (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH, workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH },
+                (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH, workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH },
+                ENN_SCROLLBAR_BG_COLOR
+        );
+
+        render_rectangle_push(
+                (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH, handle_y },
+                (f32vec2) { workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH, handle_y + handle_h },
+                is_dragging_scrollbar ? ENN_SCROLLBAR_DRAG_COLOR : ENN_SCROLLBAR_HANDLE_COLOR
+        );
+
+        render_rectangle_push(
+                (f32vec2) { ENN_SCREEN_MIN_COORD, ENN_SCREEN_MIN_COORD },
+                (f32vec2) { workspaces_box.x, ENN_SCREEN_MAX_COORD },
                 ENN_BKG_COLOR
         );
 
         render_rectangle_push(
-                (f32vec2) { workspaces_box.z, ENN_SCREEN_MIN_COORD },
-                (f32vec2) { ENN_SCREEN_MAX_COORD, ENN_SCREEN_MAX_COORD },
+                (f32vec2) { workspaces_box.x, ENN_SCREEN_MIN_COORD },
+                (f32vec2) { ENN_SCREEN_MAX_COORD, workspaces_box.y },
                 ENN_BKG_COLOR
         );
 
@@ -292,6 +306,14 @@ void workspace_layer_on_render(void) {
                 (f32vec2) { ENN_SCREEN_MAX_COORD, ENN_SCREEN_MAX_COORD },
                 ENN_BKG_COLOR
         );
+
+        render_rectangle_push(
+                (f32vec2) { workspaces_box.z, workspaces_box.y },
+                (f32vec2) { ENN_SCREEN_MAX_COORD, workspaces_box.w },
+                ENN_BKG_COLOR
+        );
+
+        ui_text_button_list_render(&buttons);
 
         render_text_push(
                 (f32vec2) { ENN_TITLE_TEXT_POS_X1, ENN_TITLE_TEXT_POS_Y1 },
@@ -420,6 +442,7 @@ void workspace_layer_on_event(Event* event) {
                                                                 
                                                                 vector_remove_at_address_keep_order(workspaces, selected_workspace);
                                                                 selected_workspace = NULL;
+                                                                hovered_workspace = NULL;
 
                                                                 f32 curr_box_h = workspaces_box.w - workspaces_box.y;
                                                                 f32 curr_visible_h = curr_box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
@@ -497,6 +520,23 @@ void workspace_layer_on_event(Event* event) {
                                 }
 
                                 ui_text_button_list_check_hover(&buttons, ndc);
+
+                                hovered_workspace = NULL;
+                                if (ndc.y >= workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH && ndc.y <= workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH) {
+                                        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
+                                                if (is_inside_rectangle(
+                                                        ndc,
+                                                        (f32vec4){
+                                                            workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
+                                                            workspaces.data[i].pos.y,
+                                                            (workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH) - (workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH),
+                                                            workspaces.data[i].dim.y + ENN_SAVE_DATA_TEXT_HEIGHT}))
+                                                {
+                                                        hovered_workspace = &workspaces.data[i];
+                                                        break;
+                                                }
+                                        }
+                                }
                         }
                         break;
                 }
@@ -526,6 +566,7 @@ void workspace_layer_on_event(Event* event) {
                                                 
                                                 vector_remove_at_address_keep_order(workspaces, selected_workspace);
                                                 selected_workspace = NULL;
+                                                hovered_workspace = NULL;
 
                                                 f32 box_h = workspaces_box.w - workspaces_box.y;
                                                 f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
@@ -587,6 +628,9 @@ void workspace_layer_on_event(Event* event) {
                                                         vector_push_back(workspaces, new_ws);
                                                         vector_sort(workspaces, workspace_cmp, workspaces.start, workspaces.end);
 
+                                                        selected_workspace = NULL;
+                                                        hovered_workspace = NULL;
+
                                                         f32 box_h = workspaces_box.w - workspaces_box.y;
                                                         f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
                                                         f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
@@ -631,19 +675,23 @@ void workspace_layer_on_event(Event* event) {
                 case ENN_INPUT_MOUSE_SCROLL_EVENT:
                 {
                         if (!typing_state) {
-                                f64* offset = event -> data;
-                                f32 box_h = workspaces_box.w - workspaces_box.y;
-                                f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
-                                f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
-                                f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
+                                f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+                                if (ndc.x >= workspaces_box.x && ndc.x <= workspaces_box.z &&
+                                    ndc.y >= workspaces_box.y && ndc.y <= workspaces_box.w) {
+                                        f64* offset = event -> data;
+                                        f32 box_h = workspaces_box.w - workspaces_box.y;
+                                        f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
+                                        f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
+                                        f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
 
-                                if (min_offset < 0.0) {
-                                        workspace_list_offset += ENN_WORKSPACE_LIST_SCROLL_CHANGE * (*offset);
-                                        if (workspace_list_offset < min_offset) workspace_list_offset = min_offset;
-                                        if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
+                                        if (min_offset < 0.0) {
+                                                workspace_list_offset += ENN_WORKSPACE_LIST_SCROLL_CHANGE * (*offset);
+                                                if (workspace_list_offset < min_offset) workspace_list_offset = min_offset;
+                                                if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
 
-                                        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                workspaces.data[i].pos.y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset;
+                                                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
+                                                        workspaces.data[i].pos.y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset;
+                                                }
                                         }
                                 }
                         }

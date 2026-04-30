@@ -27,14 +27,14 @@ ENNDEF_PUBLIC void render_init_font_atlas(void) {
                 .x = 0, .y = 16
         };
 
-        for (i32 i = 0; i < (i32)(ENN_FONT_ATLAS_LAST_CHAR - ENN_FONT_ATLAS_FIRST_CHAR); ++i) {
+        for (i32 i = 0; i <= (i32)(ENN_FONT_ATLAS_LAST_CHAR - ENN_FONT_ATLAS_FIRST_CHAR); ++i) {
                 i32 row = i / global_render.font_atlas.char_per_col;
                 i32 col = i % global_render.font_atlas.char_per_col;
                 
                 global_render.font_atlas.char_sprite[i].x = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
                 global_render.font_atlas.char_sprite[i].y = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
-                global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
-                global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
+                global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x - 1 + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
+                global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y - 1 + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
         }
 
         DEBUG_UNTRACE();
@@ -86,7 +86,7 @@ void render_init(void) {
 
         WHITE_TEXTURE = render_sprite_create(&global_render.sprite_sheet,
                 (i32vec2) { 0, 0 },
-                (i32vec2) { 16, 16 });
+                (i32vec2) { 15, 15 });
 
         global_render.proj_matrix_location = glGetUniformLocation(global_render.shader, "projection");
 
@@ -151,7 +151,6 @@ void render_proj_set(f32mat4 proj_matrix) {
         memcpy(global_render.proj_matrix, proj_matrix, (sizeof (f32mat4)));
         DEBUG_UNTRACE();
 }
-
 
 void render_rectangle_push(f32vec2 top_left, f32vec2 bott_right, u32 color) {
         DEBUG_TRACE();
