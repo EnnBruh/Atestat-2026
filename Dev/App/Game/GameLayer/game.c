@@ -5,6 +5,32 @@
 
 LayerID game_layer_id;
 
+static DataFile game_save;
+
+void game_start(const char* save_filepath) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(save_filepath != NULL);
+
+        datafile_create(&game_save);
+        datafile_read(&game_save, save_filepath);
+
+        layer_set_active(game_ui_layer_id);
+        layer_set_active(game_layer_id);
+        layer_set_active(map_layer_id);
+        DEBUG_UNTRACE();
+}
+
+void game_stop(void) {
+        DEBUG_TRACE();
+        datafile_write(&game_save, game_save.filepath);
+        datafile_destroy(&game_save);
+
+        layer_set_inactive(game_ui_layer_id);
+        layer_set_inactive(game_layer_id);
+        layer_set_inactive(map_layer_id);
+        DEBUG_UNTRACE();
+}
+
 void game_layer_init(void) {
 }
 

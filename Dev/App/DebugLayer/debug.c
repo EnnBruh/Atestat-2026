@@ -3,10 +3,13 @@
 LayerID debug_layer_id;
 
 void debug_layer_init(void) {
+        DEBUG_TRACE();
+        DEBUG_UNTRACE();
 }
 
 void debug_layer_term(void) {
-
+        DEBUG_TRACE();
+        DEBUG_UNTRACE();
 }
 
 static char fps_buff[32];

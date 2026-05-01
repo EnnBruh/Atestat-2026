@@ -20,6 +20,7 @@ static UITextButtonList buttons;
 static vector(WorkspaceData) workspaces;
 static WorkspaceData* selected_workspace;
 static WorkspaceData* hovered_workspace;
+static WorkspaceData* last_clicked_workspace;
 
 static vector(char) input_string;
 static bool typing_state;
@@ -29,64 +30,70 @@ static bool name_conflict_error;
 
 static f32 workspace_list_offset;
 static bool is_dragging_scrollbar;
+static f64 last_workspace_click_time;
 
-#define ENN_WORKSPACES_BOX_X                -0.205
-#define ENN_WORKSPACES_BOX_Y                -0.4
-#define ENN_WORKSPACES_BOX_Z                0.8
-#define ENN_WORKSPACES_BOX_W                0.5
+#define ENN_WORKSPACES_BOX_X                            -0.205
+#define ENN_WORKSPACES_BOX_Y                            -0.4
+#define ENN_WORKSPACES_BOX_Z                            0.8
+#define ENN_WORKSPACES_BOX_W                            0.5
 
-#define ENN_WORKSPACE_LIST_SCROLL_CHANGE    0.035
+#define ENN_WORKSPACE_LIST_SCROLL_CHANGE                0.035
 
-#define ENN_CREATE_WORKSPACE_BUTTON_ID      0x001
-#define ENN_DELETE_WORKSPACE_BUTTON_ID      0x002
-#define ENN_OPEN_WORKSPACE_BUTTON_ID        0x003
-#define ENN_BACK_BUTTON_ID                  0x004
+#define ENN_CREATE_WORKSPACE_BUTTON_ID                  0x001
+#define ENN_DELETE_WORKSPACE_BUTTON_ID                  0x002
+#define ENN_OPEN_WORKSPACE_BUTTON_ID                    0x003
+#define ENN_BACK_BUTTON_ID                              0x004
 
-#define ENN_BKG_COLOR                       0x101214FF
-#define ENN_WORKSPACES_BOX_COLOR            0x151819FF
-#define ENN_BUTTON_LIST_COLOR               0x505050FF
-#define ENN_TEXT_COLOR_WHITE                0xFFFFFFFF
-#define ENN_TEXT_COLOR_RED                  0xd75f5fFF
-#define ENN_TEXT_COLOR_MUTED                0x505050FF
-#define ENN_SELECTED_WORKSPACE_COLOR        0xFFFFFF30
-#define ENN_HOVERED_WORKSPACE_COLOR         0xFFFFFF15
-#define ENN_SCROLLBAR_BG_COLOR              0x202020FF
-#define ENN_SCROLLBAR_DRAG_COLOR            0x808080FF
-#define ENN_SCROLLBAR_HANDLE_COLOR          0x505050FF
-#define ENN_TYPING_OVERLAY_COLOR            0x00000050
+#define ENN_BKG_COLOR                                   0x101214FF
+#define ENN_WORKSPACES_BOX_COLOR                        0x151819FF
+#define ENN_BUTTON_LIST_COLOR                           0x505050FF
+#define ENN_TEXT_COLOR_WHITE                            0xFFFFFFFF
+#define ENN_TEXT_COLOR_RED                              0xd75f5fFF
+#define ENN_TEXT_COLOR_MUTED                            0x505050FF
+#define ENN_SELECTED_WORKSPACE_COLOR                    0xFFFFFF30
+#define ENN_HOVERED_WORKSPACE_COLOR                     0xFFFFFF15
+#define ENN_SCROLLBAR_BG_COLOR                          0x202020FF
+#define ENN_SCROLLBAR_DRAG_COLOR                        0x808080FF
+#define ENN_SCROLLBAR_HANDLE_COLOR                      0x505050FF
+#define ENN_TYPING_OVERLAY_COLOR                        0x00000080
+#define ENN_PLACEHOLDER_TEXT_COLOR                      0x80808080
 
-#define ENN_SAVE_DATA_FMT                   "LAST SAVE: %Y.%m.%d|%H:%M:%S"
-#define ENN_SAVE_DATA_TEXT_HEIGHT           0.035
+#define ENN_SAVE_DATA_FMT                               "LAST SAVE: %Y.%m.%d|%H:%M:%S"
+#define ENN_SAVE_DATA_TEXT_HEIGHT                       0.035
 
-#define ENN_INPUT_STRING_TEXT_HEIGHT        0.2
-#define ENN_CURSOR_CHANGE_TIME              0.5
+#define ENN_INPUT_STRING_TEXT_HEIGHT                    0.2
+#define ENN_CURSOR_CHANGE_TIME                          0.5
 
-#define ENN_MAIN_BUTTON_COUNT               4
-#define ENN_BUTTON_TEXT_HEIGHT              0.075
-#define ENN_BUTTON_POS_X                    -0.85
-#define ENN_BUTTON_SPACING                  0.1
+#define ENN_MAIN_BUTTON_COUNT                           4
+#define ENN_BUTTON_TEXT_HEIGHT                          0.075
+#define ENN_BUTTON_POS_X                                -0.85
+#define ENN_BUTTON_SPACING                              0.1
 
-#define ENN_WORKSPACE_ITEM_DIM_Y            0.05
-#define ENN_WORKSPACE_ITEM_SPACING          0.11
-#define ENN_WORKSPACE_ITEM_TEXT_HEIGHT      0.05
+#define ENN_WORKSPACE_ITEM_DIM_Y                        0.05
+#define ENN_WORKSPACE_ITEM_SPACING                      0.11
+#define ENN_WORKSPACE_ITEM_TEXT_HEIGHT                  0.05
 
-#define ENN_WORKSPACES_BORDER_WIDTH         0.02
-#define ENN_SCROLLBAR_WIDTH                 0.03
+#define ENN_WORKSPACES_BORDER_WIDTH                     0.005
+#define ENN_SCROLLBAR_WIDTH                             0.03
 
-#define ENN_SCREEN_MIN_COORD                -1.0
-#define ENN_SCREEN_MAX_COORD                1.0
+#define ENN_SCREEN_MIN_COORD                            -1.0
+#define ENN_SCREEN_MAX_COORD                            1.0
 
-#define ENN_TITLE_TEXT_POS_X1               -0.475
-#define ENN_TITLE_TEXT_POS_Y1               -0.75
-#define ENN_TITLE_TEXT_POS_X2               0.475
-#define ENN_TITLE_TEXT_POS_Y2               -0.65
-#define ENN_TITLE_TEXT_HEIGHT               0.1
-#define ENN_TITLE_TEXT_STRING               "SELECT A WORKSPACE"
+#define ENN_TITLE_TEXT_POS_X1                           -0.475
+#define ENN_TITLE_TEXT_POS_Y1                           -0.75
+#define ENN_TITLE_TEXT_POS_X2                           0.475
+#define ENN_TITLE_TEXT_POS_Y2                           -0.65
+#define ENN_TITLE_TEXT_HEIGHT                           0.1
+#define ENN_TITLE_TEXT_STRING                           "SELECT A WORKSPACE"
 
-#define ENN_ERROR_TEXT_HEIGHT               0.05
-#define ENN_ERROR_TEXT_POS_Y1               0.4
-#define ENN_ERROR_TEXT_POS_Y2               0.5
-#define ENN_ERROR_TEXT_STRING               "ERROR: A WORKSPACE WITH THAT NAME ALREADY EXISTS"
+#define ENN_ERROR_TEXT_HEIGHT                           0.05
+#define ENN_ERROR_TEXT_POS_Y1                           0.4
+#define ENN_ERROR_TEXT_POS_Y2                           0.5
+#define ENN_ERROR_TEXT_STRING                           "ERROR: A WORKSPACE WITH THAT NAME ALREADY EXISTS"
+
+#define ENN_PLACEHOLDER_TEXT_STRING                     ""
+
+#define ENN_DOUBLE_CLICK_TIME                           0.3
 
 static const f32vec4 workspaces_box = {
         .x = ENN_WORKSPACES_BOX_X,
@@ -95,11 +102,97 @@ static const f32vec4 workspaces_box = {
         .w = ENN_WORKSPACES_BOX_W
 };
 
+ENNDEF_PUBLIC void workspace_layer_update_scroll_and_positions(void) {
+        DEBUG_TRACE();
+        f32 box_h = workspaces_box.w - workspaces_box.y;
+        f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
+        f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
+        f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
+        
+        if (workspace_list_offset < min_offset) workspace_list_offset = min_offset;
+        if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
+
+        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
+                workspaces.data[i].pos = (f32vec2) {
+                        .x = workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
+                        .y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset
+                };
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void workspace_layer_exit_typing_state(void) {
+        DEBUG_TRACE();
+        typing_state = false;
+        vector_clear(input_string);
+        name_conflict_error = false;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void workspace_layer_delete_selected(void) {
+        DEBUG_TRACE();
+        if (selected_workspace != NULL) {
+                char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(selected_workspace -> workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
+                sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", selected_workspace -> workspace_name, ENN_DATAFILE_FILE_EXTENSION);
+                file_remove(path);
+                free(path);
+
+                free(selected_workspace -> workspace_name);
+                free(selected_workspace -> workspace_last_modified);
+                
+                if (selected_workspace == last_clicked_workspace) {
+                        last_clicked_workspace = NULL;
+                }
+
+                vector_remove_at_address_keep_order(workspaces, selected_workspace);
+                selected_workspace = NULL;
+                hovered_workspace = NULL;
+
+                workspace_layer_update_scroll_and_positions();
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void workspace_layer_open_selected(void) {
+        DEBUG_TRACE();
+        if (selected_workspace != NULL) {
+                char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(selected_workspace -> workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
+                sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", selected_workspace -> workspace_name, ENN_DATAFILE_FILE_EXTENSION);
+                game_start(path);
+                free(path);
+                layer_set_inactive(workspace_layer_id);
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC WorkspaceData* workspace_layer_get_workspace_at(f32vec2 ndc) {
+        DEBUG_TRACE();
+        if (ndc.y >= workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH && ndc.y <= workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH) {
+                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
+                        if (is_inside_rectangle(
+                                ndc,
+                                (f32vec4){
+                                    workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
+                                    workspaces.data[i].pos.y,
+                                    (workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH) - (workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH),
+                                    workspaces.data[i].dim.y + ENN_SAVE_DATA_TEXT_HEIGHT}))
+                        {
+                                DEBUG_UNTRACE();
+                                return &workspaces.data[i];
+                        }
+                }
+        }
+        DEBUG_UNTRACE();
+        return NULL;
+}
+
 void workspace_layer_init(void) {
         DEBUG_TRACE();
         
         selected_workspace = NULL;
         hovered_workspace = NULL;
+        last_clicked_workspace = NULL;
+        last_workspace_click_time = 0.0;
 
         ui_text_button_list_init(
                 &buttons, ENN_LEFT_ALIGN, ENN_BUTTON_LIST_COLOR,
@@ -148,10 +241,6 @@ void workspace_layer_init(void) {
                 if (extension == 0) continue ;
 
                 data.dim = (f32vec2) { 0.0, ENN_WORKSPACE_ITEM_DIM_Y };
-                data.pos = (f32vec2) {
-                        .x = workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                        .y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * vector_size(workspaces)
-                };
 
                 char* full_path = calloc((sizeof (ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/")) + workspace_entry ->d_namlen, (sizeof (char)));
                 sprintf(full_path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s", workspace_entry -> d_name);
@@ -169,12 +258,7 @@ void workspace_layer_init(void) {
         directory_close(workspace_dir);
 
         vector_sort(workspaces, workspace_cmp, workspaces.start, workspaces.end);
-        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                workspaces.data[i].pos = (f32vec2) {
-                        .x = workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                        .y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start)
-                };
-        }
+        workspace_layer_update_scroll_and_positions();
 
         DEBUG_UNTRACE();
 }
@@ -190,6 +274,7 @@ void workspace_layer_term(void) {
         vector_destroy(input_string);
         selected_workspace = NULL;
         hovered_workspace = NULL;
+        last_clicked_workspace = NULL;
         DEBUG_UNTRACE();
 }
 
@@ -207,7 +292,6 @@ void workspace_layer_on_render(void) {
                 (f32vec2) { ENN_SCREEN_MAX_COORD, ENN_SCREEN_MAX_COORD },
                 ENN_BKG_COLOR
         );
-
 
         render_rectangle_push(
                 (f32vec2) { workspaces_box.x, workspaces_box.y },
@@ -349,6 +433,15 @@ void workspace_layer_on_render(void) {
                                 ENN_INPUT_STRING_TEXT_HEIGHT,
                                 ENN_CENTER_ALIGN
                         );
+                } else {
+                        render_text_push(
+                                text_pos1,
+                                text_pos2,
+                                ENN_PLACEHOLDER_TEXT_STRING,
+                                ENN_PLACEHOLDER_TEXT_COLOR,
+                                ENN_INPUT_STRING_TEXT_HEIGHT,
+                                ENN_CENTER_ALIGN
+                        );
                 }
 
                 if (cursor_state) {
@@ -383,106 +476,80 @@ void workspace_layer_on_event(Event* event) {
                 case ENN_INPUT_MOUSE_BUTTON_EVENT:
                 {
                         struct { i32 button, action; }* data = event -> data;
-                        if (data -> button == GLFW_MOUSE_BUTTON_LEFT && data -> action == GLFW_PRESS) {
-                                if (typing_state) {
-                                        typing_state = false;
-                                        vector_clear(input_string);
-                                        name_conflict_error = false;
-                                        break;
-                                }
-
-                                f32 box_h = workspaces_box.w - workspaces_box.y;
-                                f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
-                                f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
-                                f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
-
-                                if (min_offset < 0.0) {
-                                        f32 handle_ratio = visible_h / content_h;
-                                        if (handle_ratio > 1.0) handle_ratio = 1.0;
-                                        f32 handle_h = visible_h * handle_ratio;
-                                        f32 scroll_ratio = (workspace_list_offset / min_offset);
-                                        f32 handle_y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + scroll_ratio * (visible_h - handle_h);
-
+                        if (data -> button == GLFW_MOUSE_BUTTON_LEFT) {
+                                if (data -> action == GLFW_PRESS) {
                                         f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
-                                        if (ndc.x >= workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH && ndc.x <= workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH &&
-                                            ndc.y >= handle_y && ndc.y <= handle_y + handle_h) {
-                                                is_dragging_scrollbar = true;
+                                        if (typing_state) {
+                                                workspace_layer_exit_typing_state();
                                                 break;
                                         }
-                                }
 
-                                if (buttons.hover != NULL) {
-                                        switch (buttons.hover -> id) {
-                                                case ENN_CREATE_WORKSPACE_BUTTON_ID:
-                                                {
-                                                        typing_state = true;
-                                                        input_string.end = input_string.start;
-                                                        if (input_string.capacity > 0) input_string.data[input_string.end] = 0;
-                                                        cursor_state = true;
-                                                        last_cursor_change = glfwGetTime();
-                                                        name_conflict_error = false;
+                                        f32 box_h = workspaces_box.w - workspaces_box.y;
+                                        f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
+                                        f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
+                                        f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
+
+                                        if (min_offset < 0.0) {
+                                                f32 handle_ratio = visible_h / content_h;
+                                                if (handle_ratio > 1.0) handle_ratio = 1.0;
+                                                f32 handle_h = visible_h * handle_ratio;
+                                                f32 scroll_ratio = (workspace_list_offset / min_offset);
+                                                f32 handle_y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + scroll_ratio * (visible_h - handle_h);
+
+                                                if (ndc.x >= workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH && ndc.x <= workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH &&
+                                                    ndc.y >= handle_y && ndc.y <= handle_y + handle_h) {
+                                                        is_dragging_scrollbar = true;
                                                         break;
                                                 }
-                                                case ENN_BACK_BUTTON_ID:
-                                                {
-                                                        layer_set_active(menu_layer_id);
-                                                        layer_set_inactive(workspace_layer_id);
-                                                        break;
-                                                }
-                                                case ENN_DELETE_WORKSPACE_BUTTON_ID:
-                                                {
-                                                        if (selected_workspace != NULL) {
-                                                                char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(selected_workspace -> workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
-                                                                sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", selected_workspace -> workspace_name, ENN_DATAFILE_FILE_EXTENSION);
-                                                                file_remove(path);
-                                                                free(path);
+                                        }
 
-                                                                free(selected_workspace -> workspace_name);
-                                                                free(selected_workspace -> workspace_last_modified);
-                                                                
-                                                                vector_remove_at_address_keep_order(workspaces, selected_workspace);
-                                                                selected_workspace = NULL;
-                                                                hovered_workspace = NULL;
-
-                                                                f32 curr_box_h = workspaces_box.w - workspaces_box.y;
-                                                                f32 curr_visible_h = curr_box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
-                                                                f32 curr_content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
-                                                                f32 curr_min_offset = (curr_content_h > curr_visible_h) ? curr_visible_h - curr_content_h : 0.0;
-                                                                
-                                                                if (workspace_list_offset < curr_min_offset) workspace_list_offset = curr_min_offset;
-                                                                if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
-
-                                                                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                                        workspaces.data[i].pos = (f32vec2) {
-                                                                                .x = workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                                                                                .y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset
-                                                                        };
-                                                                }
+                                        if (buttons.hover != NULL) {
+                                                switch (buttons.hover -> id) {
+                                                        case ENN_CREATE_WORKSPACE_BUTTON_ID:
+                                                        {
+                                                                typing_state = true;
+                                                                input_string.end = input_string.start;
+                                                                if (input_string.capacity > 0) input_string.data[input_string.end] = 0;
+                                                                cursor_state = true;
+                                                                last_cursor_change = glfwGetTime();
+                                                                name_conflict_error = false;
+                                                                break;
                                                         }
-                                                        break;
+                                                        case ENN_BACK_BUTTON_ID:
+                                                        {
+                                                                layer_set_active(menu_layer_id);
+                                                                layer_set_inactive(workspace_layer_id);
+                                                                break;
+                                                        }
+                                                        case ENN_DELETE_WORKSPACE_BUTTON_ID:
+                                                        {
+                                                                workspace_layer_delete_selected();
+                                                                break;
+                                                        }
+                                                        case ENN_OPEN_WORKSPACE_BUTTON_ID:
+                                                        {
+                                                                workspace_layer_open_selected();
+                                                                break;
+                                                        }
+                                                        default: break;
                                                 }
-                                                default: break;
                                         }
-                                }
 
-                                f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
-                                if (ndc.y >= workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH && ndc.y <= workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH) {
-                                        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                if (is_inside_rectangle(
-                                                        ndc,
-                                                        (f32vec4){
-                                                            workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                                                            workspaces.data[i].pos.y,
-                                                            (workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH) - (workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH),
-                                                            workspaces.data[i].dim.y + ENN_SAVE_DATA_TEXT_HEIGHT}))
-                                                {
-                                                        selected_workspace = &workspaces.data[i];
-                                                        break;
+                                        WorkspaceData* clicked = workspace_layer_get_workspace_at(ndc);
+                                        if (clicked != NULL) {
+                                                f64 current_time = glfwGetTime();
+                                                if (clicked == last_clicked_workspace && (current_time - last_workspace_click_time) < ENN_DOUBLE_CLICK_TIME) {
+                                                        selected_workspace = clicked;
+                                                        workspace_layer_open_selected();
+                                                } else {
+                                                        selected_workspace = clicked;
+                                                        last_clicked_workspace = clicked;
+                                                        last_workspace_click_time = current_time;
                                                 }
                                         }
+                                } else if (data -> action == GLFW_RELEASE) {
+                                        is_dragging_scrollbar = false;
                                 }
-                        } else if (data -> button == GLFW_MOUSE_BUTTON_LEFT && data -> action == GLFW_RELEASE) {
-                                is_dragging_scrollbar = false;
                         }
                         break;
                 }
@@ -513,30 +580,12 @@ void workspace_layer_on_event(Event* event) {
                                                 f32 scroll_ratio = (visible_h > handle_h) ? (handle_y - top_bound) / (visible_h - handle_h) : 0.0;
                                                 workspace_list_offset = scroll_ratio * min_offset;
 
-                                                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                        workspaces.data[i].pos.y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset;
-                                                }
+                                                workspace_layer_update_scroll_and_positions();
                                         }
                                 }
 
                                 ui_text_button_list_check_hover(&buttons, ndc);
-
-                                hovered_workspace = NULL;
-                                if (ndc.y >= workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH && ndc.y <= workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH) {
-                                        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                if (is_inside_rectangle(
-                                                        ndc,
-                                                        (f32vec4){
-                                                            workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                                                            workspaces.data[i].pos.y,
-                                                            (workspaces_box.z - ENN_WORKSPACES_BORDER_WIDTH - ENN_SCROLLBAR_WIDTH) - (workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH),
-                                                            workspaces.data[i].dim.y + ENN_SAVE_DATA_TEXT_HEIGHT}))
-                                                {
-                                                        hovered_workspace = &workspaces.data[i];
-                                                        break;
-                                                }
-                                        }
-                                }
+                                hovered_workspace = workspace_layer_get_workspace_at(ndc);
                         }
                         break;
                 }
@@ -545,9 +594,7 @@ void workspace_layer_on_event(Event* event) {
                         struct { i32 key, action; }* data = event -> data;
                         if (data -> key == GLFW_KEY_ESCAPE && data -> action == GLFW_PRESS) {
                                 if (typing_state) {
-                                        typing_state = false;
-                                        vector_clear(input_string);
-                                        name_conflict_error = false;
+                                        workspace_layer_exit_typing_state();
                                 } else {
                                         layer_set_active(menu_layer_id);
                                         layer_set_inactive(workspace_layer_id);
@@ -555,43 +602,18 @@ void workspace_layer_on_event(Event* event) {
                         }
                         if (data -> key == GLFW_KEY_DELETE && data -> action == GLFW_PRESS) {
                                 if (!typing_state) {
-                                        if (selected_workspace != NULL) {
-                                                char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(selected_workspace -> workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
-                                                sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", selected_workspace -> workspace_name, ENN_DATAFILE_FILE_EXTENSION);
-                                                file_remove(path);
-                                                free(path);
-
-                                                free(selected_workspace -> workspace_name);
-                                                free(selected_workspace -> workspace_last_modified);
-                                                
-                                                vector_remove_at_address_keep_order(workspaces, selected_workspace);
-                                                selected_workspace = NULL;
-                                                hovered_workspace = NULL;
-
-                                                f32 box_h = workspaces_box.w - workspaces_box.y;
-                                                f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
-                                                f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
-                                                f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
-                                                if (workspace_list_offset < min_offset) workspace_list_offset = min_offset;
-                                                if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
-
-                                                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                        workspaces.data[i].pos = (f32vec2) {
-                                                                .x = workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                                                                .y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset
-                                                        };
-                                                }
-                                        }
+                                        workspace_layer_delete_selected();
                                 }
                         }
                         if (data -> key == GLFW_KEY_BACKSPACE && (data -> action == GLFW_PRESS || data -> action == GLFW_REPEAT)) {
                                 if (typing_state) {
-                                        if (vector_size(input_string) <= 0) break;
-                                        vector_pop_back(input_string);
-                                        input_string.data[input_string.end] = 0;
-                                        cursor_state = true;
-                                        last_cursor_change = glfwGetTime();
-                                        name_conflict_error = false;
+                                        if (vector_size(input_string) > 0) {
+                                                vector_pop_back(input_string);
+                                                input_string.data[input_string.end] = 0;
+                                                cursor_state = true;
+                                                last_cursor_change = glfwGetTime();
+                                                name_conflict_error = false;
+                                        }
                                 }
                         }
                         if (data -> key == GLFW_KEY_ENTER && data -> action == GLFW_PRESS) {
@@ -631,28 +653,13 @@ void workspace_layer_on_event(Event* event) {
                                                         selected_workspace = NULL;
                                                         hovered_workspace = NULL;
 
-                                                        f32 box_h = workspaces_box.w - workspaces_box.y;
-                                                        f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
-                                                        f32 content_h = vector_size(workspaces) * ENN_WORKSPACE_ITEM_SPACING;
-                                                        f32 min_offset = (content_h > visible_h) ? visible_h - content_h : 0.0;
-                                                        if (workspace_list_offset < min_offset) workspace_list_offset = min_offset;
-                                                        if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
-                                                        
-                                                        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                                workspaces.data[i].pos = (f32vec2) {
-                                                                        .x = workspaces_box.x + ENN_WORKSPACES_BORDER_WIDTH,
-                                                                        .y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset
-                                                                };
-                                                        }
+                                                        workspace_layer_update_scroll_and_positions();
                                                         
                                                         free(path);
-                                                        typing_state = false;
-                                                        vector_clear(input_string);
+                                                        workspace_layer_exit_typing_state();
                                                 }
                                         } else {
-                                                typing_state = false;
-                                                vector_clear(input_string);
-                                                name_conflict_error = false;
+                                                workspace_layer_exit_typing_state();
                                         }
                                 }
                         }
@@ -662,13 +669,14 @@ void workspace_layer_on_event(Event* event) {
                 {
                         if (typing_state) {
                                 u32* code = event -> data;
-                                if (*code < ENN_FONT_ATLAS_FIRST_CHAR || *code > ENN_FONT_ATLAS_LAST_CHAR) break;
-                                char ch = (char)*code;
-                                vector_push_back(input_string, ch);
-                                input_string.data[input_string.end] = 0;
-                                cursor_state = true;
-                                last_cursor_change = glfwGetTime();
-                                name_conflict_error = false;
+                                if (*code >= ENN_FONT_ATLAS_FIRST_CHAR && *code <= ENN_FONT_ATLAS_LAST_CHAR) {
+                                        char ch = (char)*code;
+                                        vector_push_back(input_string, ch);
+                                        input_string.data[input_string.end] = 0;
+                                        cursor_state = true;
+                                        last_cursor_change = glfwGetTime();
+                                        name_conflict_error = false;
+                                }
                         }
                         break;
                 }
@@ -686,12 +694,7 @@ void workspace_layer_on_event(Event* event) {
 
                                         if (min_offset < 0.0) {
                                                 workspace_list_offset += ENN_WORKSPACE_LIST_SCROLL_CHANGE * (*offset);
-                                                if (workspace_list_offset < min_offset) workspace_list_offset = min_offset;
-                                                if (workspace_list_offset > 0.0) workspace_list_offset = 0.0;
-
-                                                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                        workspaces.data[i].pos.y = workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH + ENN_WORKSPACE_ITEM_SPACING * (i - workspaces.start) + workspace_list_offset;
-                                                }
+                                                workspace_layer_update_scroll_and_positions();
                                         }
                                 }
                         }

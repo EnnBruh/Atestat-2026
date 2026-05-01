@@ -3,6 +3,8 @@
 
 #include "core.h"
 
+#define ENN_FRAMEBUFF_ASPECT_RATIO ((f32)16 / (f32)9)
+
 extern struct GlobalState {
         bool            is_key_down[GLFW_KEY_LAST];
         bool            is_button_down[GLFW_MOUSE_BUTTON_LAST];

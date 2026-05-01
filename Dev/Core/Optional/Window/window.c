@@ -504,7 +504,7 @@ ENNDEF_PUBLIC void window_on_framebuff_resize(GLFWwindow* handle, i32 new_width,
                 .handled = false,
         };
 
-        _core_state._window_main.framebuff_dim.x= new_width; _core_state._window_main.framebuff_dim.y = new_height;
+        // _core_state._window_main.framebuff_dim.x= new_width; _core_state._window_main.framebuff_dim.y = new_height;
         struct { i32 width, height; } data = { new_width, new_height };
         event.data = (void*)&data;
 

@@ -36,7 +36,7 @@ extern struct Renderer {
                 i32vec2 char_dim;
                 i32vec2 font_dim;
                 i32     char_per_col;
-                f32vec4 char_sprite[(i32)(ENN_FONT_ATLAS_LAST_CHAR - ENN_FONT_ATLAS_FIRST_CHAR) + 10];
+                f32vec4 char_sprite[(i32)(ENN_FONT_ATLAS_LAST_CHAR - ENN_FONT_ATLAS_FIRST_CHAR) + 1];
         } font_atlas;
 } global_render;
 

@@ -97,6 +97,7 @@ void escape_menu_layer_on_event(Event* event) {
                                 switch (buttons.hover -> id) {
                                         case EXIT_BUTTON_ID: 
                                         {
+                                                game_stop();
                                                 core_stop(); 
                                                 break;
                                         }
@@ -113,8 +114,7 @@ void escape_menu_layer_on_event(Event* event) {
                                                 // layer_set_inactive(blur_layer_id);
                                                 layer_set_active(menu_layer_id);
                                                 layer_set_inactive(escape_menu_layer_id);
-                                                layer_set_inactive(map_layer_id);
-                                                layer_set_inactive(game_layer_id);
+                                                game_stop();
                                                 break;
                                         }
                                         case SETTINGS_BUTTON_ID:

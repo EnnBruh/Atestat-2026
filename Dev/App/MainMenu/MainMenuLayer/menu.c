@@ -37,6 +37,9 @@ void menu_layer_init(void) {
                 },
                3 
         );
+
+                
+
         DEBUG_UNTRACE();
 }
 
@@ -71,6 +74,7 @@ void menu_layer_on_render(void) {
                 "DIGITAL LOGIC SIMULATOR", 0xFFFFFFFF, 0.1, ENN_LEFT_ALIGN);
 
         ui_text_button_list_render(&buttons);
+
         DEBUG_UNTRACE();
 }
 

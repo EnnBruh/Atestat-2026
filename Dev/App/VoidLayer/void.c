@@ -11,7 +11,7 @@ void void_layer_init(void) {
         global_state.pause = false;
 
         i32vec2 window_dim = window_get_framebuff_dim();
-        f64 original_aspect_ratio = (f64)16 / (f64)9;
+        f64 original_aspect_ratio = ENN_FRAMEBUFF_ASPECT_RATIO;
         f64 new_aspect_ratio = (f64)window_dim.x / (f64)window_dim.y;
 
         if (new_aspect_ratio > original_aspect_ratio) {

@@ -8,7 +8,7 @@ ENNDEF_PUBLIC bool is_number_symbol(char c) {
     return (c >= '0' && c <= '9') || c == '.' || c == '-';
 }
 
-static void log_serialization_error(const char* msg, const char* filepath, const char* buffer_start, const char* cursor) {
+ENNDEF_PUBLIC void log_serialization_error(const char* msg, const char* filepath, const char* buffer_start, const char* cursor) {
     i32 line = 1;
     for (const char* c = buffer_start; c < cursor; ++c) {
         if (*c == '\n') line++;
@@ -435,8 +435,9 @@ void datafile_read(DataFile* df, const char* filepath) {
     DEBUG_ASSERT(filepath != NULL);
 
     i32 path_len = strlen(filepath);
-    i32 ext_len = strlen(ENN_DATAFILE_FILE_EXTENSION);
-    DEBUG_ASSERT(path_len >= ext_len && strcmp(filepath + path_len - ext_len, ENN_DATAFILE_FILE_EXTENSION) == 0);
+    ASSERT(path_len >= (sizeof ENN_DATAFILE_FILE_EXTENSION) && 
+           strcmp(filepath + path_len - (sizeof ENN_DATAFILE_FILE_EXTENSION) + 1, ENN_DATAFILE_FILE_EXTENSION) == 0,
+           "[Serialization] File %s is unsupported. Only supported file type is %s", filepath, ENN_DATAFILE_FILE_EXTENSION);
 
     df -> filepath = calloc(path_len, (sizeof (char)));
     memcpy(df -> filepath, filepath, path_len * (sizeof (char)));

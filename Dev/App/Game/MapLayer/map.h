@@ -3,18 +3,18 @@
 
 #include "layer.h"
 
-#define ENN_MAP_ZOOM_MAX 5.0
-#define ENN_MAP_ZOOM_MIN 0.2
+#define ENN_MAP_ZOOM_MAX                5.0
+#define ENN_MAP_ZOOM_MIN                0.2
 
-#define ENN_MAP_ZOOM_PLUS 1.1
-#define ENN_MAP_ZOOM_MINUS 0.9
+#define ENN_MAP_ZOOM_PLUS               1.1
+#define ENN_MAP_ZOOM_MINUS              0.9
 
-#define ENN_MAP_BCKG_COLOR 0x101214FF
-#define ENN_MAP_GRID_MAIN_COLOR 0x252728FF
-#define ENN_MAP_GRID_SECOND_COLOR 0x151719FF
+#define ENN_MAP_BCKG_COLOR              0x101214FF
+#define ENN_MAP_GRID_MAIN_COLOR         0x252728FF
+#define ENN_MAP_GRID_SECOND_COLOR       0x151719FF
 
-#define ENN_MAP_GRID_CELL_SIZE 10
-#define ENN_MAP_GRID_LINE_WIDTH 0.25
+#define ENN_MAP_GRID_CELL_SIZE          10
+#define ENN_MAP_GRID_LINE_WIDTH         0.25
 
 extern struct MapView {
         f32vec2 visible_pixels;

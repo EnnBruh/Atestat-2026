@@ -16,6 +16,7 @@ ENNDEF_PUBLIC void render_init_sprite_sheet(void) {
 
 ENNDEF_PUBLIC void render_init_font_atlas(void) {
         DEBUG_TRACE();
+        // LOG("spirtesheet size = %" PRIi32 " %" PRIi32, global_render.sprite_sheet.width, global_render.sprite_sheet.height);
         global_render.font_atlas.char_dim = (i32vec2) {
                 .x = 8, .y = 16
         };
@@ -24,7 +25,7 @@ ENNDEF_PUBLIC void render_init_font_atlas(void) {
                 .x = 128, .y = 96
         };
         global_render.font_atlas.font_offset = (i32vec2) {
-                .x = 0, .y = 16
+                .x = 0, .y = 17
         };
 
         for (i32 i = 0; i <= (i32)(ENN_FONT_ATLAS_LAST_CHAR - ENN_FONT_ATLAS_FIRST_CHAR); ++i) {

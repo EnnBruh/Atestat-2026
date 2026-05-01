@@ -537,6 +537,7 @@ typedef size_t          usize;
             DEBUG_TRACE(vector_clear); \
             (_vec).start = 0;          \
             (_vec).end = 0;            \
+            DEBUG_UNTRACE();            \
     } while (0)
 
 # 	define vector_destroy(_vec)																											        \
@@ -568,12 +569,14 @@ typedef size_t          usize;
         DEBUG_TRACE(vector_reserve);																										\
         if ((_vec).capacity >= (_count)) {																								        \
             DEBUG_LOG_WARN("Unnecessary reserve request for vector %s", TO_STR(_vec));																		        \
+            DEBUG_UNTRACE();                                                                                                                                                                                                                    \
             break;																											        \
         }																												        \
         const i32 _new_capacity = (i32)(ENN_SMALLEST_POW2_GREATER_THAN(_count));																			        \
         if ((_vec).capacity == 0) {																									        \
             (_vec).capacity = (_new_capacity);																							        \
             (_vec).data = calloc((_vec).capacity, (sizeof (*(_vec).data)));																				        \
+            DEBUG_UNTRACE();                                                                                                                                                                                                                    \
             break;																											        \
         } 																												        \
         (_vec).capacity = (_new_capacity);																								        \
@@ -1505,6 +1508,9 @@ ENNDEF_PUBLIC i32 file_write_cstring(const char* filepath, char* data, i32 size)
 }
 
 ENNDEF_PUBLIC i32 file_remove(const char* filepath) {
+    DEBUG_TRACE();
+    DEBUG_ASSERT(filepath != NULL);
+    DEBUG_UNTRACE();
     return remove(filepath);
 }
 
@@ -1547,6 +1553,19 @@ ENNDEF_PUBLIC time_t file_get_date(const char* filepath) {
     if (stat(filepath, &st) != 0) return (time_t)0;
 #   endif
     return st.st_mtime;
+}
+
+ENNDEF_PUBLIC i32 file_get_size(const char* filepath) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(filepath != NULL);
+        FILE* file = fopen(filepath, "rb");
+        ASSERT(file != NULL, "[Base] Could not open file '%s'", filepath);
+
+        fseek(file, 0, SEEK_END);
+        i32 size = (i32)ftell(file);
+        fclose(file);
+
+        return size;
 }
 
 /* ---------- Text Serialization ---------- */

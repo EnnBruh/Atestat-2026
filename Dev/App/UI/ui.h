@@ -35,7 +35,6 @@ ENNDEF_PUBLIC void ui_text_button_list_render(UITextButtonList* list) {
                 if (&list -> list.data[i] != list -> hover) render_text_push(list -> list.data[i].pos, (f32vec2) { list -> list.data[i].pos.x + list -> list.data[i].dim.x, list -> list.data[i].pos.y + list -> list.data[i].dim.y }, list -> list.data[i].text, list -> list.data[i].color, list -> list.data[i].dim.y, list -> align);
                 else render_text_push(list -> list.data[i].pos, (f32vec2) { list -> list.data[i].pos.x + list -> list.data[i].dim.x, list -> list.data[i].pos.y + list -> list.data[i].dim.y }, list -> list.data[i].text, list -> button_hover_color, list -> list.data[i].dim.y, list -> align);
 
-
         DEBUG_UNTRACE();
 }
 
@@ -50,7 +49,6 @@ ENNDEF_PUBLIC void ui_text_button_list_check_hover(UITextButtonList* list, f32ve
                         DEBUG_UNTRACE();
                         return ;
                 }
-
 
         DEBUG_UNTRACE();
 }
@@ -72,7 +70,6 @@ ENNDEF_PUBLIC void ui_text_button_list_init(UITextButtonList* list, ENN_TEXT_ALI
 
         UITextButton button; 
         i32 button_text_len = 0;
-
 
         f32 render_text_ratio = ((f32)global_render.font_atlas.char_dim.x / (f32)global_render.font_atlas.char_dim.y);
         for (i32 i = 0; i < num_buttons; ++i) {
@@ -123,6 +120,90 @@ ENNDEF_PUBLIC void ui_text_button_list_term(UITextButtonList* list) {
         vector_destroy(list -> list);
 
         memset(list, 0x0, (sizeof (UITextButtonList)));
+        DEBUG_UNTRACE();
+}
+
+typedef i32 UISpriteButtonID;
+typedef struct UISpriteButton {
+        UISpriteButtonID        id;
+        f32vec2                 pos;
+        f32vec2                 dim;
+        Sprite*                 sprite;
+} UISpriteButton;
+
+ENNDEF_PUBLIC bool ui_sprite_button_under_pos(UISpriteButton* button, f32vec2 pos) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(button != NULL);
+        DEBUG_UNTRACE();
+        return button -> pos.x <= pos.x && button -> pos.x + button -> dim.x >= pos.x &&
+               button -> pos.y <= pos.y && button -> pos.y + button -> dim.y >= pos.y;
+}
+
+typedef struct UISpriteButtonList {
+        vector(UISpriteButton)  list;
+        UISpriteButton*         hover;
+        u32                     button_hover_color;
+} UISpriteButtonList;
+
+ENNDEF_PUBLIC void ui_sprite_button_list_render(UISpriteButtonList* list) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(list != NULL);
+
+        for (i32 i = list -> list.start; i < list -> list.end; ++i) 
+                if (&list -> list.data[i] != list -> hover) render_sprite_push(list -> list.data[i].pos, (f32vec2) { list -> list.data[i].pos.x + list -> list.data[i].dim.x, list -> list.data[i].pos.y + list -> list.data[i].dim.y }, list -> list.data[i].sprite);
+                else render_sprite_push_color(list -> list.data[i].pos, (f32vec2) { list -> list.data[i].pos.x + list -> list.data[i].dim.x, list -> list.data[i].pos.y + list -> list.data[i].dim.y }, list -> list.data[i].sprite, list -> button_hover_color);
+
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void ui_sprite_button_list_check_hover(UISpriteButtonList* list, f32vec2 pos) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(list != NULL);
+
+        list -> hover = NULL;
+        for (i32 i = list -> list.start; i < list -> list.end; ++i)
+                if (ui_sprite_button_under_pos(&list -> list.data[i], pos)) {
+                        list -> hover = &list -> list.data[i];
+                        DEBUG_UNTRACE();
+                        return ;
+                }
+
+        DEBUG_UNTRACE();
+}
+
+typedef struct UISpriteButtonData {
+        UISpriteButtonID        id;
+        f32vec2                 pos;
+        f32vec2                 dim;
+        Sprite*                 sprite;
+} UISpriteButtonData;
+
+ENNDEF_PUBLIC void ui_sprite_button_list_init(UISpriteButtonList* list, u32 button_hover_color, UISpriteButtonData buttons[], i32 num_buttons) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(list != NULL);
+        list -> button_hover_color = button_hover_color;
+        vector_reserve(list -> list, num_buttons);
+
+        UISpriteButton button; 
+
+        for (i32 i = 0; i < num_buttons; ++i) {
+                button.id     = buttons[i].id;
+                button.pos    = buttons[i].pos;
+                button.dim    = buttons[i].dim;
+                button.sprite = buttons[i].sprite;
+                
+                vector_push_back(list -> list, button);
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void ui_sprite_button_list_term(UISpriteButtonList* list) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(list != NULL);
+
+        vector_destroy(list -> list);
+
+        memset(list, 0x0, (sizeof (UISpriteButtonList)));
         DEBUG_UNTRACE();
 }
 

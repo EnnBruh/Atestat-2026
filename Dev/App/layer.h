@@ -13,10 +13,13 @@ LAYER_DEFINE(menu);
 LAYER_DEFINE(workspace);
 LAYER_DEFINE(settings);
 LAYER_DEFINE(game);
+LAYER_DEFINE(game_ui);
 LAYER_DEFINE(map);
 LAYER_DEFINE(blur);
 LAYER_DEFINE(escape_menu);
 
 
 ENNDEF_PRIVATE void blur_layer_update_texture(void);
+ENNDEF_PRIVATE void game_start(const char* save_filepath);
+ENNDEF_PRIVATE void game_stop(void);
 #endif

@@ -30,6 +30,12 @@ signed main(void) {
             LAYER_ASSIGN(debug)
         });
 
+        game_ui_layer_id = window_push_layer(&(Layer) {
+                .active = false,
+                .priority = 3,
+                LAYER_ASSIGN(game_ui)
+        });
+
         game_layer_id = window_push_layer(&(Layer) {
                 .active = false,
                 .priority = 2,
@@ -71,6 +77,7 @@ signed main(void) {
                 .priority = 5,
                 LAYER_ASSIGN(escape_menu)
         });
+
 
         core_run();
 

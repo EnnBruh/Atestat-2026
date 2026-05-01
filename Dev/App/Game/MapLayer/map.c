@@ -16,6 +16,7 @@ void map_layer_term(void) {
 }
 
 void map_layer_on_render(void) {
+        DEBUG_TRACE();
         render_proj_set((f32mat4) {
                 2 / map_view.visible_pixels.x * map_view.zoom, 0, 0, -(2 * map_view.camera_offset.x ) / map_view.visible_pixels.x * map_view.zoom - 1.0,
                 0, -(2 / map_view.visible_pixels.y * map_view.zoom), 0, (2 * map_view.camera_offset.y) / map_view.visible_pixels.y * map_view.zoom + 1.0,
@@ -59,6 +60,7 @@ void map_layer_on_render(void) {
                         (f32vec2) { bott_right.x, y },
                         ENN_MAP_GRID_LINE_WIDTH, ENN_MAP_GRID_MAIN_COLOR);
         }
+        DEBUG_UNTRACE();
 }
 
 void map_layer_on_update(f64 dt) {
