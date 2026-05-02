@@ -16,7 +16,6 @@ ENNDEF_PUBLIC void render_init_sprite_sheet(void) {
 
 ENNDEF_PUBLIC void render_init_font_atlas(void) {
         DEBUG_TRACE();
-        // LOG("spirtesheet size = %" PRIi32 " %" PRIi32, global_render.sprite_sheet.width, global_render.sprite_sheet.height);
         global_render.font_atlas.char_dim = (i32vec2) {
                 .x = 8, .y = 16
         };
@@ -34,8 +33,8 @@ ENNDEF_PUBLIC void render_init_font_atlas(void) {
                 
                 global_render.font_atlas.char_sprite[i].x = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
                 global_render.font_atlas.char_sprite[i].y = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
-                global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x - 1 + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
-                global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y - 1 + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
+                global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
+                global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
         }
 
         DEBUG_UNTRACE();
@@ -344,4 +343,13 @@ void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color) {
         vert[3].texture_pos = WHITE_TEXTURE.texture_top_left;
 
         global_render.buff_size += 4;
+}
+
+void render_flip_wireframe(void) {
+        DEBUG_TRACE();
+        static GLenum mode = GL_FILL;
+        render_buff_draw();
+        mode = (mode == GL_FILL) ? GL_LINE : GL_FILL;
+        glPolygonMode(GL_FRONT_AND_BACK, mode);
+        DEBUG_UNTRACE();
 }

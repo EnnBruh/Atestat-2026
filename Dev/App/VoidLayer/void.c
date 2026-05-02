@@ -81,6 +81,19 @@ void void_layer_on_event(Event* event) {
                                 settings.fullscreen = !settings.fullscreen;
                                 window_flip_fullscreen();
                         }
+                       
+                        #ifdef ENN_DEBUG_MODE
+                        if (data -> key == GLFW_KEY_R && data -> action == GLFW_PRESS && global_state.is_key_down[GLFW_KEY_LEFT_CONTROL]) {
+                                  DEBUG_LOG("[Render] Hot reloading renderer");
+                                  render_term();
+                                  render_init();
+                        }
+
+                        if (data -> key == GLFW_KEY_Q && data -> action == GLFW_PRESS && global_state.is_key_down[GLFW_KEY_LEFT_CONTROL]) {
+                                  DEBUG_LOG("[Render] Flipping Wireframe mode");
+                                  render_flip_wireframe();
+                        }
+                        #endif
 
                         break;
                 }

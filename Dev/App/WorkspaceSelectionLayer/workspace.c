@@ -73,7 +73,7 @@ static f64 last_workspace_click_time;
 #define ENN_WORKSPACE_ITEM_SPACING                      0.11
 #define ENN_WORKSPACE_ITEM_TEXT_HEIGHT                  0.05
 
-#define ENN_WORKSPACES_BORDER_WIDTH                     0.005
+#define ENN_WORKSPACES_BORDER_WIDTH                     0.015
 #define ENN_SCROLLBAR_WIDTH                             0.03
 
 #define ENN_SCREEN_MIN_COORD                            -1.0
@@ -331,11 +331,11 @@ void workspace_layer_on_render(void) {
 
         render_rectangle_push(
                 (f32vec2) { workspaces_box.x, workspaces_box.y },
-                (f32vec2) { workspaces_box.z, workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH },
+                (f32vec2) { workspaces_box.z, workspaces_box.y + ENN_WORKSPACES_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
                 ENN_WORKSPACES_BOX_COLOR
         );
         render_rectangle_push(
-                (f32vec2) { workspaces_box.x, workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH },
+                (f32vec2) { workspaces_box.x, workspaces_box.w - ENN_WORKSPACES_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
                 (f32vec2) { workspaces_box.z, workspaces_box.w },
                 ENN_WORKSPACES_BOX_COLOR
         );

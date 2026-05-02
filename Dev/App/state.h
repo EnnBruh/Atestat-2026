@@ -5,6 +5,11 @@
 
 #define ENN_FRAMEBUFF_ASPECT_RATIO ((f32)16 / (f32)9)
 
+typedef enum ENN_GAME_STATE {
+        ENN_EDIT_MODE,
+        ENN_EXECUTE_MODE
+} ENN_GAME_STATE;
+
 extern struct GlobalState {
         bool            is_key_down[GLFW_KEY_LAST];
         bool            is_button_down[GLFW_MOUSE_BUTTON_LAST];
@@ -12,6 +17,7 @@ extern struct GlobalState {
         f64vec2         prev_mouse_pos;
         bool            pause;
         i32             drawn_vertices;
+        ENN_GAME_STATE  game_state;
 } global_state;
 
 extern i32vec4 window_viewport;

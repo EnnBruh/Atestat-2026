@@ -66,7 +66,7 @@ void escape_menu_layer_on_render(void) {
         render_rectangle_push(
                 (f32vec2) { -1.0, -1.0 },
                 (f32vec2) { 1.0, 1.0 },
-                0x00000050);
+                0x00000080);
 
         render_text_push(
                 (f32vec2) { -0.45, -0.6 },

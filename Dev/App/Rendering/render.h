@@ -53,6 +53,7 @@ ENNDEF_PRIVATE void render_buff_draw(void);
 ENNDEF_PRIVATE Sprite render_sprite_create(Image* texture, i32vec2 texture_top_left, i32vec2 texture_bott_right);
 
 ENNDEF_PRIVATE void render_proj_set(f32mat4 proj_matrix);
+ENNDEF_PRIVATE void render_flip_wireframe(void);
 
 ENNDEF_PRIVATE void render_rectangle_push(f32vec2 top_left, f32vec2 bott_right, u32 color);
 ENNDEF_PRIVATE void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color);
