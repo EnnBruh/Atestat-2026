@@ -33,8 +33,8 @@ ENNDEF_PUBLIC void render_init_font_atlas(void) {
                 
                 global_render.font_atlas.char_sprite[i].x = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
                 global_render.font_atlas.char_sprite[i].y = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
-                global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
-                global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
+                global_render.font_atlas.char_sprite[i].z = (f32)(col * global_render.font_atlas.char_dim.x + global_render.font_atlas.char_dim.x - 1 + global_render.font_atlas.font_offset.x) / (f32)global_render.sprite_sheet.width;
+                global_render.font_atlas.char_sprite[i].w = (f32)(row * global_render.font_atlas.char_dim.y + global_render.font_atlas.char_dim.y - 1 + global_render.font_atlas.font_offset.y) / (f32)global_render.sprite_sheet.height;
         }
 
         DEBUG_UNTRACE();
@@ -126,12 +126,12 @@ Sprite render_sprite_create(Image* texture, i32vec2 texture_top_left, i32vec2 te
         return (Sprite) {
                 .img = texture,
                 .texture_top_left = (f32vec2) {
-                        .x = (f32)texture_top_left.x / (f32)texture -> width,
-                        .y = (f32)texture_top_left.y / (f32)texture -> height
+                        .x = (f32)texture_top_left.x / ((f32)texture -> width - 1),
+                        .y = (f32)texture_top_left.y / ((f32)texture -> height - 1)
                 },
                 .texture_bott_right = (f32vec2) {
-                        .x = (f32)texture_bott_right.x / (f32)texture -> width,
-                        .y = (f32)texture_bott_right.y / (f32)texture -> height
+                        .x = (f32)texture_bott_right.x / ((f32)texture -> width - 1),
+                        .y = (f32)texture_bott_right.y / ((f32)texture -> height - 1)
                 }
         };
 }
@@ -149,6 +149,15 @@ void render_proj_set(f32mat4 proj_matrix) {
         glUseProgram(global_render.shader);
         glUniformMatrix4fv(global_render.proj_matrix_location, 1, GL_TRUE, proj_matrix);
         memcpy(global_render.proj_matrix, proj_matrix, (sizeof (f32mat4)));
+        DEBUG_UNTRACE();
+}
+
+void render_flip_wireframe(void) {
+        DEBUG_TRACE();
+        static GLenum mode = GL_FILL;
+        render_buff_draw();
+        mode = (mode == GL_FILL) ? GL_LINE : GL_FILL;
+        glPolygonMode(GL_FRONT_AND_BACK, mode);
         DEBUG_UNTRACE();
 }
 
@@ -308,13 +317,16 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
 }
 
 void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color) {
-        f32 len = (pos2.x - pos1.x) * (pos2.x - pos1.x) + (pos2.y - pos1.y) * (pos2.y - pos1.y);
-        if (len == 0.0) return ;
-        f32 half = (width * 0.5) / sqrtf(len);
+        f32 dx = pos2.x - pos1.x;
+        f32 dy = pos2.y - pos1.y;
+        f32 dx_ar = dx * ENN_FRAMEBUFF_ASPECT_RATIO;
+        f32 len = dx_ar * dx_ar + dy * dy;
+        if (len == 0.0f) return ;
+        f32 half = (width * 0.5f) / sqrtf(len);
 
         f32vec2 normal = {
-                .x = -(pos2.y - pos1.y) * half,
-                .y = (pos2.x - pos1.x) * half
+                .x = -(dy / ENN_FRAMEBUFF_ASPECT_RATIO) * half,
+                .y = dx_ar * half
         };
 
         if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
@@ -345,11 +357,103 @@ void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color) {
         global_render.buff_size += 4;
 }
 
-void render_flip_wireframe(void) {
+void render_multiline_push(f32vec2* points, i32 count, f32 width, u32 color) {
         DEBUG_TRACE();
-        static GLenum mode = GL_FILL;
-        render_buff_draw();
-        mode = (mode == GL_FILL) ? GL_LINE : GL_FILL;
-        glPolygonMode(GL_FRONT_AND_BACK, mode);
+        if (count < 2) {
+                DEBUG_UNTRACE();
+                return ;
+        }
+
+        for (i32 i = 0; i < count - 1; ++i) {
+                render_line_push(points[i], points[i + 1], width, color);
+        }
+
+        f32 half_w = width * 0.5f;
+
+        for (i32 i = 1; i < count - 1; ++i) {
+                f32vec2 p0 = points[i - 1];
+                f32vec2 p1 = points[i];
+                f32vec2 p2 = points[i + 1];
+
+                f32 dx1 = p1.x - p0.x;
+                f32 dy1 = p1.y - p0.y;
+                f32 dx2 = p2.x - p1.x;
+                f32 dy2 = p2.y - p1.y;
+
+                f32 dx1_ar = dx1 * ENN_FRAMEBUFF_ASPECT_RATIO;
+                f32 dx2_ar = dx2 * ENN_FRAMEBUFF_ASPECT_RATIO;
+
+                f32 len1 = dx1_ar * dx1_ar + dy1 * dy1;
+                f32 len2 = dx2_ar * dx2_ar + dy2 * dy2;
+
+                if (len1 == 0.0f || len2 == 0.0f) continue ;
+
+                f32 half1 = half_w / sqrtf(len1);
+                f32 half2 = half_w / sqrtf(len2);
+
+                f32vec2 n1 = {
+                        .x = -(dy1 / ENN_FRAMEBUFF_ASPECT_RATIO) * half1,
+                        .y = dx1_ar * half1
+                };
+
+                f32vec2 n2 = {
+                        .x = -(dy2 / ENN_FRAMEBUFF_ASPECT_RATIO) * half2,
+                        .y = dx2_ar * half2
+                };
+
+                if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
+                        render_buff_draw();
+
+                Vertex* vert = &global_render.buff[global_render.buff_size];
+
+                vert[0].pos.x = p1.x;
+                vert[0].pos.y = p1.y;
+                vert[0].color = color;
+                vert[0].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                vert[1].pos.x = p1.x + n1.x;
+                vert[1].pos.y = p1.y + n1.y;
+                vert[1].color = color;
+                vert[1].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                vert[2].pos.x = p1.x + n2.x;
+                vert[2].pos.y = p1.y + n2.y;
+                vert[2].color = color;
+                vert[2].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                vert[3].pos.x = p1.x + n2.x;
+                vert[3].pos.y = p1.y + n2.y;
+                vert[3].color = color;
+                vert[3].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                global_render.buff_size += 4;
+
+                if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
+                        render_buff_draw();
+
+                vert = &global_render.buff[global_render.buff_size];
+
+                vert[0].pos.x = p1.x;
+                vert[0].pos.y = p1.y;
+                vert[0].color = color;
+                vert[0].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                vert[1].pos.x = p1.x - n1.x;
+                vert[1].pos.y = p1.y - n1.y;
+                vert[1].color = color;
+                vert[1].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                vert[2].pos.x = p1.x - n2.x;
+                vert[2].pos.y = p1.y - n2.y;
+                vert[2].color = color;
+                vert[2].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                vert[3].pos.x = p1.x - n2.x;
+                vert[3].pos.y = p1.y - n2.y;
+                vert[3].color = color;
+                vert[3].texture_pos = WHITE_TEXTURE.texture_top_left;
+
+                global_render.buff_size += 4;
+        }
         DEBUG_UNTRACE();
 }

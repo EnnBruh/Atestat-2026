@@ -114,6 +114,7 @@ typedef GLuint 	ShaderID;
 typedef GLuint 	VBOID;
 typedef GLuint 	VAOID;
 typedef GLuint 	FBOID;
+typedef GLuint 	EBOID;
 
 typedef GLuint 	TextureID;
 

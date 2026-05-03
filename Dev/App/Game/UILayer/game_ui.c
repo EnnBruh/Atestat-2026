@@ -1,4 +1,6 @@
 #include "layer.h"
+#include "Game/objects.h"
+#include "Game/MapLayer/map.h"
 
 LayerID game_ui_layer_id;
 
@@ -227,7 +229,7 @@ void game_ui_layer_init(void) {
                         sub.color = ENN_UI_BIG_BTN_COLOR;
                         sub.sprite = sub_sprites[i][j];
                         
-                        f32 aspect = (i == 2) ? ((f32)(ENN_UI_SPRITE_CHIP.z - ENN_UI_SPRITE_CHIP.x + 1) / (f32)(ENN_UI_SPRITE_CHIP.w - ENN_UI_SPRITE_CHIP.y + 1)) : (23.0f / 16.0f);
+                        f32 aspect = (i == 2) ? ((f32)(ENN_UI_SPRITE_CHIP.z - ENN_UI_SPRITE_CHIP.x + 1) / (f32)(ENN_UI_SPRITE_CHIP.w - ENN_UI_SPRITE_CHIP.y + 1)) : (24.0f / 16.0f);
                         sub.sprite_dim = (f32vec2) { ENN_UI_BIG_BTN_WIDTH, ENN_UI_BIG_BTN_WIDTH / aspect * ENN_FRAMEBUFF_ASPECT_RATIO };
                         
                         vector_push_back(big_buttons[i].sub_buttons, sub);
@@ -590,6 +592,62 @@ void game_ui_layer_on_event(Event* event) {
                                                         layer_set_active(menu_layer_id);
                                                         break;
                                                 }
+                                        }
+                                } else {
+                                        f32vec2 map_mouse_pos = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+                                        switch (hovered_button_id) {
+                                                case ENN_UI_BTN_ID_IN_IND_RED:
+                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_RED);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_IN_IND_ORANGE:
+                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_ORANGE);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_IN_IND_YELLOW:
+                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_YELLOW);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_IN_IND_GREEN:
+                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_GREEN);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_IN_IND_BLUE:
+                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_BLUE);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_IN_IND_PURPLE:
+                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_PURPLE);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_OUT_IND_RED:
+                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_RED);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_OUT_IND_ORANGE:
+                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_ORANGE);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_OUT_IND_YELLOW:
+                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_YELLOW);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_OUT_IND_GREEN:
+                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_GREEN);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_OUT_IND_BLUE:
+                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_BLUE);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_OUT_IND_PURPLE:
+                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_PURPLE);
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                case ENN_UI_BTN_ID_CHIP_NAND:
+                                                        active_submenu_index = -1;
+                                                        break;
+                                                default: break;
                                         }
                                 }
                         }

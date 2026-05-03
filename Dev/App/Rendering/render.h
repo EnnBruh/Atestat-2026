@@ -22,7 +22,7 @@ extern struct Renderer {
 
         VAOID           vao;
         VBOID           vbo;
-        u32             ebo;
+        EBOID           ebo;
         ShaderID        shader;
 
         UniformLocation proj_matrix_location;
@@ -57,6 +57,7 @@ ENNDEF_PRIVATE void render_flip_wireframe(void);
 
 ENNDEF_PRIVATE void render_rectangle_push(f32vec2 top_left, f32vec2 bott_right, u32 color);
 ENNDEF_PRIVATE void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color);
+ENNDEF_PRIVATE void render_multiline_push(f32vec2* points, i32 count, f32 width, u32 color);
 ENNDEF_PRIVATE void render_sprite_push_color(f32vec2 top_left, f32vec2 bott_right, Sprite* sprite, u32 color);
 ENNDEF_PRIVATE void render_sprite_push(f32vec2 top_left, f32vec2 bott_right, Sprite* sprite);
 ENNDEF_PRIVATE void render_sprite_flip_horizontal(Sprite* sprite);
