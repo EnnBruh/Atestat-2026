@@ -7,7 +7,7 @@
 
  /* ----- Base Configs -----*/
  
-  #define ENN_DEBUG_MODE
+//   #define ENN_DEBUG_MODE
 
   #define ENN_APP_DIRECTORY "Simulation"
 //   #define ENN_DATA_PATH "/Data/"

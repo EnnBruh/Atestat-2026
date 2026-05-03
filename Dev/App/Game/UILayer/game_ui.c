@@ -54,6 +54,12 @@ LayerID game_ui_layer_id;
 #define ENN_UI_BORDER_WIDTH             0.0025
 #define ENN_UI_HOVER_OVERLAY_COLOR      0xFFFFFF30
 #define ENN_UI_BIG_BTN_COLOR            ENN_UI_MENU_BKG_COLOR
+#define ENN_UI_CHIP_SCROLL_CHANGE       0.12
+#define ENN_UI_CHIP_PREVIEW_PADDING     0.025
+#define ENN_UI_SAVE_NOTIFICATION_TIME   3.0
+#define ENN_UI_SAVE_NOTIFICATION_TEXT   "CIRCUIT SAVED"
+#define ENN_UI_SAVE_NOTIFICATION_HEIGHT 0.04
+#define ENN_UI_SAVE_NOTIFICATION_COLOR  0x98971aFF
 
 #define ENN_UI_BTN_ID_TOGGLE            0x001
 #define ENN_UI_BTN_ID_HAMBURGER         0x100
@@ -76,6 +82,7 @@ LayerID game_ui_layer_id;
 #define ENN_UI_BTN_ID_OUT_IND_PURPLE    0x225
 
 #define ENN_UI_BTN_ID_CHIP_NAND         0x230
+#define ENN_UI_BTN_ID_CHIP_FIRST        ENN_UI_BTN_ID_CHIP_NAND
 
 #define ENN_UI_BTN_ID_SAVE_CIRCUIT      0x300
 #define ENN_UI_BTN_ID_COMPILE_CIRCUIT   0x301
@@ -100,11 +107,15 @@ typedef struct UIMenuButton {
         u32                             color;
         Sprite*                         sprite;
         f32vec2                         sprite_dim;
+        BlueprintChipIndex              blueprint;
+        bool                            render_chip_preview : 1;
         vector(struct UIMenuButton)     sub_buttons;
 } UIMenuButton;
 
 static bool menu_expanded;
 static f32 menu_offset_x;
+static f32 chip_submenu_scroll;
+static f64 save_notification_started;
 static i32 hovered_button_id;
 static i32 active_submenu_index;
 
@@ -120,9 +131,229 @@ static Sprite chip_sub_sprites[1];
 static UITextButtonList text_buttons;
 static f32 text_btn_base_x[ENN_UI_TEXT_BTN_COUNT];
 
+ENNDEF_PUBLIC bool game_ui_is_indicator_button(i32 button_id, bool* is_input, ENN_CIRCUIT_ELEMENT_COLORS* color) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(is_input != NULL);
+        DEBUG_ASSERT(color != NULL);
+
+        if (button_id >= ENN_UI_BTN_ID_IN_IND_RED && button_id <= ENN_UI_BTN_ID_IN_IND_PURPLE) {
+                *is_input = true;
+                *color = (ENN_CIRCUIT_ELEMENT_COLORS)(button_id - ENN_UI_BTN_ID_IN_IND_RED);
+                DEBUG_UNTRACE();
+                return true;
+        }
+
+        if (button_id >= ENN_UI_BTN_ID_OUT_IND_RED && button_id <= ENN_UI_BTN_ID_OUT_IND_PURPLE) {
+                *is_input = false;
+                *color = (ENN_CIRCUIT_ELEMENT_COLORS)(button_id - ENN_UI_BTN_ID_OUT_IND_RED);
+                DEBUG_UNTRACE();
+                return true;
+        }
+
+        DEBUG_UNTRACE();
+        return false;
+}
+
+ENNDEF_PUBLIC void game_ui_close_submenu(void) {
+        DEBUG_TRACE();
+        active_submenu_index = -1;
+        hovered_button_id = 0;
+        text_buttons.hover = NULL;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC f32 game_ui_chip_submenu_min_scroll(void) {
+        DEBUG_TRACE();
+        UIMenuButton* chip_button = &big_buttons[2];
+        i32 subs = vector_size(chip_button -> sub_buttons);
+        f32 content_right = chip_button -> local_pos.x + subs * (chip_button -> dim.x + ENN_UI_PADDING) + chip_button -> dim.x + ENN_UI_PADDING;
+        f32 visible_right = ENN_UI_MENU_MAX_COORD - menu_offset_x;
+        f32 min_scroll = min(0.0, visible_right - content_right);
+        DEBUG_UNTRACE();
+        return min_scroll;
+}
+
+ENNDEF_PUBLIC void game_ui_clamp_chip_submenu_scroll(void) {
+        DEBUG_TRACE();
+        f32 min_scroll = game_ui_chip_submenu_min_scroll();
+        if (chip_submenu_scroll < min_scroll) chip_submenu_scroll = min_scroll;
+        if (chip_submenu_scroll > 0.0) chip_submenu_scroll = 0.0;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC f32 game_ui_submenu_scroll_offset(i32 submenu_index) {
+        return (submenu_index == 2) ? chip_submenu_scroll : 0.0;
+}
+
+ENNDEF_PUBLIC f32vec4 game_ui_sub_button_rect(i32 submenu_index, UIMenuButton* sub) {
+        f32 x = sub -> local_pos.x + menu_offset_x + game_ui_submenu_scroll_offset(submenu_index);
+        return (f32vec4) { x, sub -> local_pos.y, sub -> dim.x, sub -> dim.y };
+}
+
+ENNDEF_PUBLIC bool game_ui_sub_button_is_visible(i32 submenu_index, UIMenuButton* sub) {
+        f32vec4 rect = game_ui_sub_button_rect(submenu_index, sub);
+        f32 visible_left = big_buttons[submenu_index].local_pos.x + big_buttons[submenu_index].dim.x + menu_offset_x;
+        f32 visible_right = (submenu_index == 2) ? ENN_UI_MENU_MAX_COORD : rect.x + rect.z;
+        if (submenu_index != 2) return true;
+        return rect.x + rect.z > visible_left && rect.x < visible_right;
+}
+
+ENNDEF_PUBLIC f32vec4 game_ui_submenu_row_rect(i32 submenu_index) {
+        UIMenuButton* button = &big_buttons[submenu_index];
+        i32 subs = vector_size(button -> sub_buttons);
+        f32 pad_x = ENN_UI_PADDING;
+        f32 pad_y = ENN_UI_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO;
+        f32 total_w = button -> dim.x + subs * (button -> dim.x + ENN_UI_PADDING) + pad_x;
+        f32 row_x = button -> local_pos.x + menu_offset_x;
+        if (submenu_index == 2)
+                total_w = ENN_UI_MENU_MAX_COORD - row_x;
+        return (f32vec4) { row_x, button -> local_pos.y - pad_y, total_w, button -> dim.y + pad_y * 2.0f };
+}
+
+ENNDEF_PUBLIC void game_ui_summon_indicator_for_move(bool is_input, ENN_CIRCUIT_ELEMENT_COLORS color) {
+        DEBUG_TRACE();
+        if (global_state.game_state != ENN_EDIT_MODE) {
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        f32vec2 map = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+        CircuitElement elem = {0};
+
+        if (is_input) {
+                elem = (CircuitElement) {
+                        .index = circuit_summon_input_indicator(map, color),
+                        .type = ENN_INPUT_INDICATOR
+                };
+        } else {
+                elem = (CircuitElement) {
+                        .index = circuit_summon_output_indicator(map, color),
+                        .type = ENN_OUTPUT_INDICATOR
+                };
+        }
+
+        circuit_selection_clear();
+        circuit_selection_add_element(elem);
+        circuit_selection_move_begin(map);
+        current_action = ENN_ACTION_MOVING;
+        game_ui_close_submenu();
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void game_ui_summon_chip_for_move(BlueprintChipIndex blueprint) {
+        DEBUG_TRACE();
+        if (global_state.game_state != ENN_EDIT_MODE) {
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        f32vec2 map = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+        CircuitElement elem = {
+                .index = circuit_summon_chip(map, blueprint),
+                .type = ENN_CHIP
+        };
+
+        circuit_selection_clear();
+        circuit_selection_add_element(elem);
+        circuit_selection_move_begin(map);
+        current_action = ENN_ACTION_MOVING;
+        game_ui_close_submenu();
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC bool game_ui_is_chip_button(i32 button_id, BlueprintChipIndex* blueprint) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(blueprint != NULL);
+        if (button_id >= ENN_UI_BTN_ID_CHIP_FIRST && button_id < ENN_UI_BTN_ID_CHIP_FIRST + global_circuit.blueprints.end) {
+                *blueprint = button_id - ENN_UI_BTN_ID_CHIP_FIRST;
+                DEBUG_UNTRACE();
+                return true;
+        }
+        DEBUG_UNTRACE();
+        return false;
+}
+
+ENNDEF_PUBLIC void game_ui_reposition_chip_buttons(void) {
+        DEBUG_TRACE();
+        UIMenuButton* chip_button = &big_buttons[2];
+        for (i32 i = chip_button -> sub_buttons.start; i < chip_button -> sub_buttons.end; ++i) {
+                UIMenuButton* sub = &chip_button -> sub_buttons.data[i];
+                sub -> local_pos = (f32vec2) {
+                        chip_button -> local_pos.x + (i - chip_button -> sub_buttons.start + 1) * (ENN_UI_BIG_BTN_WIDTH + ENN_UI_PADDING),
+                        chip_button -> local_pos.y
+                };
+        }
+        DEBUG_UNTRACE();
+}
+
+void game_ui_register_chip_blueprint(BlueprintChipIndex blueprint) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(blueprint != global_circuit.blueprints.end);
+        UIMenuButton* chip_button = &big_buttons[2];
+        i32 button_id = ENN_UI_BTN_ID_CHIP_FIRST + blueprint;
+
+        for (i32 i = chip_button -> sub_buttons.start; i < chip_button -> sub_buttons.end; ++i)
+                if (chip_button -> sub_buttons.data[i].id == button_id) {
+                        chip_button -> sub_buttons.data[i].color = ENN_UI_BIG_BTN_COLOR;
+                        chip_button -> sub_buttons.data[i].blueprint = blueprint;
+                        chip_button -> sub_buttons.data[i].render_chip_preview = true;
+                        DEBUG_UNTRACE();
+                        return;
+                }
+
+        UIMenuButton sub; memset(&sub, 0x0, (sizeof (UIMenuButton)));
+        sub.id = button_id;
+        sub.dim = chip_button -> dim;
+        sub.color = ENN_UI_BIG_BTN_COLOR;
+        sub.sprite = &chip_sub_sprites[0];
+        sub.sprite_dim = chip_button -> sprite_dim;
+        sub.blueprint = blueprint;
+        sub.render_chip_preview = true;
+        vector_push_back(chip_button -> sub_buttons, sub);
+        game_ui_reposition_chip_buttons();
+        game_ui_clamp_chip_submenu_scroll();
+        DEBUG_UNTRACE();
+}
+
+void game_ui_save_circuit(void) {
+        DEBUG_TRACE();
+        game_save_current_workspace();
+        save_notification_started = glfwGetTime();
+        DEBUG_UNTRACE();
+}
+
+void game_ui_toggle_mode(void) {
+        DEBUG_TRACE();
+        if (current_action != ENN_ACTION_NOTHING) {
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        if (global_state.game_state == ENN_EDIT_MODE) {
+                global_state.game_state = ENN_EXECUTE_MODE;
+                game_ui_close_submenu();
+                circuit_prepare_execute_mode();
+        } else {
+                global_state.game_state = ENN_EDIT_MODE;
+                circuit_prepare_edit_mode();
+        }
+        DEBUG_UNTRACE();
+}
+
+void game_ui_start_compile(void) {
+        DEBUG_TRACE();
+        if (global_state.game_state == ENN_EDIT_MODE && current_action == ENN_ACTION_NOTHING) {
+                chip_layer_start_compile();
+                layer_set_active(chip_layer_id);
+        }
+        DEBUG_UNTRACE();
+}
+
 void game_ui_layer_init(void) {
         menu_expanded = true;
         menu_offset_x = 0.0;
+        chip_submenu_scroll = 0.0;
+        save_notification_started = -ENN_UI_SAVE_NOTIFICATION_TIME;
         hovered_button_id = 0;
         active_submenu_index = -1;
 
@@ -236,6 +467,12 @@ void game_ui_layer_init(void) {
                         sub.dim = big_buttons[i].dim;
                         sub.color = ENN_UI_BIG_BTN_COLOR;
                         sub.sprite = sub_sprites[i][j];
+                        sub.blueprint = global_circuit.blueprints.end;
+                        sub.render_chip_preview = false;
+                        if (i == 2) {
+                                sub.blueprint = j;
+                                sub.render_chip_preview = true;
+                        }
                         
                         f32 aspect = (i == 2) ? ((f32)(ENN_UI_SPRITE_CHIP.z - ENN_UI_SPRITE_CHIP.x + 1) / (f32)(ENN_UI_SPRITE_CHIP.w - ENN_UI_SPRITE_CHIP.y + 1)) : (24.0f / 16.0f);
                         sub.sprite_dim = (f32vec2) { ENN_UI_BIG_BTN_WIDTH, ENN_UI_BIG_BTN_WIDTH / aspect * ENN_FRAMEBUFF_ASPECT_RATIO };
@@ -317,54 +554,69 @@ void game_ui_layer_on_render(void) {
                         if (btn->id == ENN_UI_BTN_ID_SWITCH_STATE) {
                                 f32 label_w = strlen(ENN_UI_MODE_LABEL_TEXT) * btn->dim.y * render_text_ratio;
                                 f32 start_x = pos.x;
+                                bool hovered = (btn == text_buttons.hover);
+                                u32 label_color = hovered ? ENN_UI_TEXT_BTN_HOVER_COLOR : ENN_UI_TITLE_COLOR;
+                                u32 state_color = hovered ? ENN_UI_TEXT_BTN_HOVER_COLOR : ((global_state.game_state == ENN_EDIT_MODE) ? ENN_UI_EDIT_COLOR : ENN_UI_EXECUTE_COLOR);
 
-                                render_text_push((f32vec2){ start_x, pos.y }, (f32vec2){ start_x, pos.y }, ENN_UI_MODE_LABEL_TEXT, ENN_UI_TITLE_COLOR, btn->dim.y, ENN_LEFT_ALIGN);
+                                render_text_push((f32vec2){ start_x, pos.y }, (f32vec2){ start_x, pos.y }, ENN_UI_MODE_LABEL_TEXT, label_color, btn->dim.y, ENN_LEFT_ALIGN);
                                 if (global_state.game_state == ENN_EDIT_MODE) {
-                                        render_text_push((f32vec2){ start_x + label_w, pos.y }, (f32vec2){ start_x + label_w, pos.y }, ENN_UI_MODE_EDIT_TEXT, ENN_UI_EDIT_COLOR, btn->dim.y, ENN_LEFT_ALIGN);
+                                        render_text_push((f32vec2){ start_x + label_w, pos.y }, (f32vec2){ start_x + label_w, pos.y }, ENN_UI_MODE_EDIT_TEXT, state_color, btn->dim.y, ENN_LEFT_ALIGN);
                                 } else {
-                                        render_text_push((f32vec2){ start_x + label_w, pos.y }, (f32vec2){ start_x + label_w, pos.y }, ENN_UI_MODE_EXECUTE_TEXT, ENN_UI_EXECUTE_COLOR, btn->dim.y, ENN_LEFT_ALIGN);
+                                        render_text_push((f32vec2){ start_x + label_w, pos.y }, (f32vec2){ start_x + label_w, pos.y }, ENN_UI_MODE_EXECUTE_TEXT, state_color, btn->dim.y, ENN_LEFT_ALIGN);
                                 }
                         }
                 }
 
                 for (i32 i = 0; i < ENN_UI_BIG_BTN_COUNT; ++i) {
                         if (active_submenu_index == i) {
+                                if (i == 2) game_ui_clamp_chip_submenu_scroll();
                                 i32 subs = vector_size(big_buttons[i].sub_buttons);
                                 f32 pad_x = ENN_UI_PADDING;
                                 f32 pad_y = ENN_UI_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO;
                                 f32 extra_w = subs * (big_buttons[i].dim.x + ENN_UI_PADDING) + pad_x;
                                 f32 menu_right_x = ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x;
+                                f32 submenu_right_x = big_buttons[i].local_pos.x + big_buttons[i].dim.x + extra_w + menu_offset_x;
+                                if (i == 2) submenu_right_x = ENN_UI_MENU_MAX_COORD;
 
                                 render_rectangle_push(
                                         (f32vec2) { menu_right_x, big_buttons[i].local_pos.y - pad_y - ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
-                                        (f32vec2) { big_buttons[i].local_pos.x + big_buttons[i].dim.x + extra_w + menu_offset_x + ENN_UI_BORDER_WIDTH, big_buttons[i].local_pos.y + big_buttons[i].dim.y + pad_y + ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                                        (f32vec2) { submenu_right_x + ENN_UI_BORDER_WIDTH, big_buttons[i].local_pos.y + big_buttons[i].dim.y + pad_y + ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
                                         ENN_UI_BORDER_COLOR
                                 );
 
                                 render_rectangle_push(
                                         (f32vec2) { menu_right_x - ENN_UI_BORDER_WIDTH, big_buttons[i].local_pos.y - pad_y },
-                                        (f32vec2) { big_buttons[i].local_pos.x + big_buttons[i].dim.x + extra_w + menu_offset_x, big_buttons[i].local_pos.y + big_buttons[i].dim.y + pad_y },
+                                        (f32vec2) { submenu_right_x, big_buttons[i].local_pos.y + big_buttons[i].dim.y + pad_y },
                                         ENN_UI_MENU_BKG_COLOR
                                 );
 
                                 for (i32 j = big_buttons[i].sub_buttons.start; j < big_buttons[i].sub_buttons.end; ++j) {
                                         UIMenuButton* sub = &big_buttons[i].sub_buttons.data[j];
+                                        if (!game_ui_sub_button_is_visible(i, sub)) continue;
+
+                                        f32vec4 sub_rect = game_ui_sub_button_rect(i, sub);
 
                                         render_rectangle_push(
-                                                (f32vec2) { sub->local_pos.x + menu_offset_x - ENN_UI_BORDER_WIDTH, sub->local_pos.y - ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
-                                                (f32vec2) { sub->local_pos.x + menu_offset_x + sub->dim.x + ENN_UI_BORDER_WIDTH, sub->local_pos.y + sub->dim.y + ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                                                (f32vec2) { sub_rect.x - ENN_UI_BORDER_WIDTH, sub_rect.y - ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                                                (f32vec2) { sub_rect.x + sub_rect.z + ENN_UI_BORDER_WIDTH, sub_rect.y + sub_rect.w + ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
                                                 ENN_UI_BORDER_COLOR
                                         );
 
                                         render_rectangle_push(
-                                                (f32vec2) { sub->local_pos.x + menu_offset_x, sub->local_pos.y },
-                                                (f32vec2) { sub->local_pos.x + menu_offset_x + sub->dim.x, sub->local_pos.y + sub->dim.y },
+                                                (f32vec2) { sub_rect.x, sub_rect.y },
+                                                (f32vec2) { sub_rect.x + sub_rect.z, sub_rect.y + sub_rect.w },
                                                 sub->color
                                         );
 
-                                        if (sub->sprite != NULL) {
-                                                f32 cx = sub->local_pos.x + menu_offset_x + sub->dim.x * 0.5f;
-                                                f32 cy = sub->local_pos.y + sub->dim.y * 0.5f;
+                                        if (sub -> render_chip_preview && sub -> blueprint != global_circuit.blueprints.end && sub -> blueprint < global_circuit.blueprints.end) {
+                                                circuit_render_blueprint_chip_preview(
+                                                        sub -> blueprint,
+                                                        (f32vec2) { sub_rect.x + ENN_UI_CHIP_PREVIEW_PADDING, sub_rect.y + ENN_UI_CHIP_PREVIEW_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO },
+                                                        (f32vec2) { sub_rect.x + sub_rect.z - ENN_UI_CHIP_PREVIEW_PADDING, sub_rect.y + sub_rect.w - ENN_UI_CHIP_PREVIEW_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO }
+                                                );
+                                        } else if (sub->sprite != NULL) {
+                                                f32 cx = sub_rect.x + sub_rect.z * 0.5f;
+                                                f32 cy = sub_rect.y + sub_rect.w * 0.5f;
                                                 f32 sw = sub->sprite_dim.x;
                                                 f32 sh = sub->sprite_dim.y;
                                                 render_sprite_push(
@@ -376,8 +628,8 @@ void game_ui_layer_on_render(void) {
 
                                         if (hovered_button_id == sub->id) {
                                                 render_rectangle_push(
-                                                        (f32vec2) { sub->local_pos.x + menu_offset_x, sub->local_pos.y },
-                                                        (f32vec2) { sub->local_pos.x + menu_offset_x + sub->dim.x, sub->local_pos.y + sub->dim.y },
+                                                        (f32vec2) { sub_rect.x, sub_rect.y },
+                                                        (f32vec2) { sub_rect.x + sub_rect.z, sub_rect.y + sub_rect.w },
                                                         ENN_UI_HOVER_OVERLAY_COLOR
                                                 );
                                         }
@@ -417,6 +669,18 @@ void game_ui_layer_on_render(void) {
                         }
                 }
         }
+
+        f64 time_since_save = glfwGetTime() - save_notification_started;
+        if (time_since_save >= 0.0 && time_since_save < ENN_UI_SAVE_NOTIFICATION_TIME) {
+                render_text_push(
+                        (f32vec2) { 0.98, 0.88 },
+                        (f32vec2) { 0.98, 0.88 },
+                        ENN_UI_SAVE_NOTIFICATION_TEXT,
+                        ENN_UI_SAVE_NOTIFICATION_COLOR,
+                        ENN_UI_SAVE_NOTIFICATION_HEIGHT,
+                        ENN_RIGHT_ALIGN
+                );
+        }
 }
 
 void game_ui_layer_on_update(f64 dt) {
@@ -438,6 +702,13 @@ void game_ui_layer_on_event(Event* event) {
         switch (event -> type) {
                 case ENN_INPUT_MOUSE_MOVE_EVENT:
                 {
+                        if (current_action != ENN_ACTION_NOTHING) {
+                                hovered_button_id = 0;
+                                text_buttons.hover = NULL;
+                                event -> handled = false;
+                                break;
+                        }
+
                         f64vec2* data = event -> data;
                         f32vec2 ndc = screen_to_ndc((f32vec2) { data -> x, data -> y });
                         
@@ -451,11 +722,7 @@ void game_ui_layer_on_event(Event* event) {
                         bool in_submenu = false;
                         if (active_submenu_index != -1) {
                                 i32 i = active_submenu_index;
-                                i32 subs = vector_size(big_buttons[i].sub_buttons);
-                                f32 pad_x = ENN_UI_PADDING;
-                                f32 pad_y = ENN_UI_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO;
-                                f32 total_w = big_buttons[i].dim.x + subs * (big_buttons[i].dim.x + ENN_UI_PADDING) + pad_x;
-                                f32vec4 row_rect = { big_buttons[i].local_pos.x + menu_offset_x, big_buttons[i].local_pos.y - pad_y, total_w, big_buttons[i].dim.y + pad_y * 2.0f };
+                                f32vec4 row_rect = game_ui_submenu_row_rect(i);
                                 if (is_inside_rectangle(ndc, row_rect)) {
                                         in_submenu = true;
                                         handled = true;
@@ -475,22 +742,21 @@ void game_ui_layer_on_event(Event* event) {
                         }
 
                         if (menu_expanded && hovered_button_id == 0) {
-                                f32vec2 adjusted_ndc = { ndc.x - menu_offset_x, ndc.y };
-                                ui_text_button_list_check_hover(&text_buttons, adjusted_ndc);
+                                ui_text_button_list_check_hover(&text_buttons, ndc);
                                 if (text_buttons.hover != NULL) {
                                         hovered_button_id = text_buttons.hover -> id;
                                         handled = true;
                                 } else {
                                         if (active_submenu_index != -1) {
                                                 i32 i = active_submenu_index;
-                                                // i32 subs = vector_size(big_buttons[i].sub_buttons);
                                                 f32vec4 btn_rect = { big_buttons[i].local_pos.x + menu_offset_x, big_buttons[i].local_pos.y, big_buttons[i].dim.x, big_buttons[i].dim.y };
                                                 if (is_inside_rectangle(ndc, btn_rect)) {
                                                         hovered_button_id = big_buttons[i].id;
                                                 } else {
                                                         for (i32 j = big_buttons[i].sub_buttons.start; j < big_buttons[i].sub_buttons.end; ++j) {
                                                                 UIMenuButton* sub = &big_buttons[i].sub_buttons.data[j];
-                                                                f32vec4 sub_rect = { sub->local_pos.x + menu_offset_x, sub->local_pos.y, sub->dim.x, sub->dim.y };
+                                                                if (!game_ui_sub_button_is_visible(i, sub)) continue;
+                                                                f32vec4 sub_rect = game_ui_sub_button_rect(i, sub);
                                                                 if (is_inside_rectangle(ndc, sub_rect)) {
                                                                         hovered_button_id = sub->id;
                                                                         break;
@@ -521,6 +787,11 @@ void game_ui_layer_on_event(Event* event) {
                 }
                 case ENN_INPUT_MOUSE_BUTTON_EVENT:
                 {
+                        if (current_action != ENN_ACTION_NOTHING) {
+                                event -> handled = false;
+                                break;
+                        }
+
                         struct { i32 button, action; }* data = event -> data;
                         
                         f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
@@ -533,11 +804,7 @@ void game_ui_layer_on_event(Event* event) {
                         bool in_submenu = false;
                         if (active_submenu_index != -1) {
                                 i32 i = active_submenu_index;
-                                i32 subs = vector_size(big_buttons[i].sub_buttons);
-                                f32 pad_x = ENN_UI_PADDING;
-                                f32 pad_y = ENN_UI_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO;
-                                f32 total_w = big_buttons[i].dim.x + subs * (big_buttons[i].dim.x + ENN_UI_PADDING) + pad_x;
-                                f32vec4 row_rect = { big_buttons[i].local_pos.x + menu_offset_x, big_buttons[i].local_pos.y - pad_y, total_w, big_buttons[i].dim.y + pad_y * 2.0f };
+                                f32vec4 row_rect = game_ui_submenu_row_rect(i);
                                 if (is_inside_rectangle(ndc, row_rect)) {
                                         in_submenu = true;
                                         handled = true;
@@ -566,15 +833,19 @@ void game_ui_layer_on_event(Event* event) {
                                         switch (text_buttons.hover -> id) {
                                                 case ENN_UI_BTN_ID_SWITCH_STATE:
                                                 {
-                                                        if (global_state.game_state == ENN_EDIT_MODE) {
-                                                                global_state.game_state = ENN_EXECUTE_MODE;
-                                                        } else {
-                                                                global_state.game_state = ENN_EDIT_MODE;
-                                                        }
+                                                        game_ui_toggle_mode();
                                                         break;
                                                 }
-                                                case ENN_UI_BTN_ID_SAVE_CIRCUIT: break;
-                                                case ENN_UI_BTN_ID_COMPILE_CIRCUIT: break;
+                                                case ENN_UI_BTN_ID_SAVE_CIRCUIT:
+                                                {
+                                                        game_ui_save_circuit();
+                                                        break;
+                                                }
+                                                case ENN_UI_BTN_ID_COMPILE_CIRCUIT:
+                                                {
+                                                        game_ui_start_compile();
+                                                        break;
+                                                }
                                                 case ENN_UI_BTN_ID_QUIT: 
                                                 {
                                                         game_stop();
@@ -583,46 +854,34 @@ void game_ui_layer_on_event(Event* event) {
                                                 }
                                         }
                                 } else {
-                                        // f32vec2 map_mouse_pos = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
-                                        i32 summoned_idx = -1;
-                                        // ENN_CIRCUIT_ELEMENT_TYPE summoned_type = ENN_INPUT_INDICATOR;
-
-                                        switch (hovered_button_id) {
-                                                case ENN_UI_BTN_ID_IN_IND_RED:
-                                                        break;
-                                                case ENN_UI_BTN_ID_IN_IND_ORANGE:
-                                                        break;
-                                                case ENN_UI_BTN_ID_IN_IND_YELLOW:
-                                                        break;
-                                                case ENN_UI_BTN_ID_IN_IND_GREEN:
-                                                        break;
-                                                case ENN_UI_BTN_ID_IN_IND_BLUE:
-                                                        break;
-                                                case ENN_UI_BTN_ID_IN_IND_PURPLE:
-                                                        break;
-                                                case ENN_UI_BTN_ID_OUT_IND_RED:
-                                                        break;
-                                                case ENN_UI_BTN_ID_OUT_IND_ORANGE:
-                                                        break;
-                                                case ENN_UI_BTN_ID_OUT_IND_YELLOW:
-                                                        break;
-                                                case ENN_UI_BTN_ID_OUT_IND_GREEN:
-                                                        break;
-                                                case ENN_UI_BTN_ID_OUT_IND_BLUE:
-                                                        break;
-                                                case ENN_UI_BTN_ID_OUT_IND_PURPLE:
-                                                        break;
-                                                case ENN_UI_BTN_ID_CHIP_NAND:
-                                                        break;
-                                                default: break;
-                                        }
-
-                                        if (summoned_idx != -1) {
-
-                                                current_action = ENN_ACTION_MOVING;
-                                                // event -> handled = false;
+                                        bool is_input = false;
+                                        ENN_CIRCUIT_ELEMENT_COLORS color = ENN_INTERNAL_COLOR_LAST;
+                                        if (global_state.game_state == ENN_EDIT_MODE && game_ui_is_indicator_button(hovered_button_id, &is_input, &color)) {
+                                                game_ui_summon_indicator_for_move(is_input, color);
+                                        } else {
+                                                BlueprintChipIndex blueprint = global_circuit.blueprints.end;
+                                                if (global_state.game_state == ENN_EDIT_MODE && game_ui_is_chip_button(hovered_button_id, &blueprint)) {
+                                                        game_ui_summon_chip_for_move(blueprint);
+                                                }
                                         }
                                 }
+                        }
+                        break;
+                }
+                case ENN_INPUT_MOUSE_SCROLL_EVENT:
+                {
+                        if (current_action != ENN_ACTION_NOTHING || !menu_expanded || active_submenu_index != 2) {
+                                event -> handled = false;
+                                break;
+                        }
+
+                        f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+                        f32vec4 row_rect = game_ui_submenu_row_rect(active_submenu_index);
+                        if (is_inside_rectangle(ndc, row_rect)) {
+                                f64* offset = event -> data;
+                                chip_submenu_scroll += (f32)(*offset) * ENN_UI_CHIP_SCROLL_CHANGE;
+                                game_ui_clamp_chip_submenu_scroll();
+                                event -> handled = true;
                         }
                         break;
                 }

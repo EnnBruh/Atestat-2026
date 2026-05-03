@@ -35,7 +35,7 @@ void settings_get_init(void) {
                         settings.resolution.y = 720;
                 }
                 if (settings.simulaton_tps <= 0) {
-                        settings.simulaton_tps = 20;
+                        settings.simulaton_tps = 100;
                 }
         } else {
                 #ifdef ENN_DEBUG_MODE
@@ -46,7 +46,7 @@ void settings_get_init(void) {
                 settings.fullscreen = false;
                 settings.resolution = (i32vec2) { .x = 1280, .y = 720 };
                 settings.vsync = true;
-                settings.simulaton_tps = 20;
+                settings.simulaton_tps = 100;
         }
         DEBUG_UNTRACE();
 }

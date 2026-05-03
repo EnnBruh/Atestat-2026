@@ -13,7 +13,8 @@ signed main(void) {
                 .is_resizable = true,
                 .has_msaa = true,
                 .has_vsync = settings.vsync,
-                .is_fullscreen = settings.fullscreen
+                .is_fullscreen = settings.fullscreen,
+                .name = "DIGITAL LOGIC SIMULATION ATESTAT 2026"
         });
 
         render_init();
@@ -46,6 +47,12 @@ signed main(void) {
                 .active = false,
                 .priority = 1,
                 LAYER_ASSIGN(map)
+        });
+
+        chip_layer_id = window_push_layer(&(Layer) {
+                .active = false,
+                .priority = 4,
+                LAYER_ASSIGN(chip)
         });
 
         menu_layer_id = window_push_layer(&(Layer) {

@@ -4,7 +4,7 @@ $(info $(SHELL))
 build: build_debug
 
 CC = gcc
-CFLAGS = -Wall -Werror -Wpedantic -std=gnu99
+CFLAGS = -Werror -Wpedantic -std=gnu99
 
 CORE_DIR = Core
 DEP_DIR  = Dep
@@ -27,7 +27,7 @@ ifeq ($(OS), Windows_NT)
 endif
 
 
-TARGET = ../main.exe
+TARGET = ../Simulator.exe
 
 CORE_OBJS = $(CORE_SRC:.c=.o)
 %.o: %.c

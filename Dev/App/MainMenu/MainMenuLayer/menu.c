@@ -3,6 +3,7 @@
 LayerID menu_layer_id;
 
 static UITextButtonList buttons;
+static f64 preview_cycle_start;
 
 #define BUILD_BUTTON_ID         0x001
 #define SETTINGS_BUTTON_ID      0x002
@@ -10,6 +11,7 @@ static UITextButtonList buttons;
 
 void menu_layer_init(void) {
         DEBUG_TRACE();
+        preview_cycle_start = glfwGetTime();
         ui_text_button_list_init(
                 &buttons, ENN_LEFT_ALIGN, 0x505050FF,
                 (UITextButtonData[]) {
@@ -72,6 +74,16 @@ void menu_layer_on_render(void) {
                 (f32vec2) { -0.95, -0.275 },
                 (f32vec2) { -0.95, -0.275 },
                 "DIGITAL LOGIC SIMULATOR", 0xFFFFFFFF, 0.1, ENN_LEFT_ALIGN);
+
+        render_text_push(
+                (f32vec2) { -0.95, 0.825 },
+                (f32vec2) { -0.8375, 0.825 },
+                "ENN", 0xFFFFFFFF, 0.075, ENN_LEFT_ALIGN);
+
+        render_text_push(
+                (f32vec2) { -0.95, 0.9 },
+                (f32vec2) { -0.65, 0.9 },
+                "v3.24.7", 0xFFFFFFFF, 0.05, ENN_LEFT_ALIGN);
 
         ui_text_button_list_render(&buttons);
 

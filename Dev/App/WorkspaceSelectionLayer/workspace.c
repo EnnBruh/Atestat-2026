@@ -27,6 +27,7 @@ static bool typing_state;
 static bool cursor_state = true;
 static f64 last_cursor_change;
 static bool name_conflict_error;
+static bool hovered_confirm_button;
 
 static f32 workspace_list_offset;
 static bool is_dragging_scrollbar;
@@ -95,6 +96,26 @@ static f64 last_workspace_click_time;
 
 #define ENN_DOUBLE_CLICK_TIME                           0.3
 
+#define ENN_WORKSPACE_BKG_COLOR                   0x000000B0
+#define ENN_WORKSPACE_PANEL_COLOR                 0x101214FF
+#define ENN_WORKSPACE_BORDER_COLOR                0x7a7c7e80
+#define ENN_WORKSPACE_MUTED_TEXT_COLOR            0x80808080
+#define ENN_WORKSPACE_PANEL_X1                   -0.55
+#define ENN_WORKSPACE_PANEL_Y1                   -0.32
+#define ENN_WORKSPACE_PANEL_X2                    0.55
+#define ENN_WORKSPACE_PANEL_Y2                    0.32
+#define ENN_WORKSPACE_TITLE_TEXT                  "NEW WORKSPACE"
+#define ENN_WORKSPACE_CONFIRM_TEXT                "CREATE WORKSPACE"
+#define ENN_WORKSPACE_BORDER_WIDTH                0.01
+#define ENN_WORKSPACE_TITLE_HEIGHT                0.075
+#define ENN_WORKSPACE_INPUT_HEIGHT                0.13
+#define ENN_WORKSPACE_CONFIRM_X1                 -0.26
+#define ENN_WORKSPACE_CONFIRM_Y1                  0.18
+#define ENN_WORKSPACE_CONFIRM_X2                  0.26
+#define ENN_WORKSPACE_CONFIRM_Y2                  0.245
+#define ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT         0.04
+#define ENN_WORKSPACE_CONFIRM_HOVER_COLOR         0xFFFFFF20
+
 static const f32vec4 workspaces_box = {
         .x = ENN_WORKSPACES_BOX_X,
         .y = ENN_WORKSPACES_BOX_Y,
@@ -126,6 +147,80 @@ ENNDEF_PUBLIC void workspace_layer_exit_typing_state(void) {
         typing_state = false;
         vector_clear(input_string);
         name_conflict_error = false;
+        hovered_confirm_button = false;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC f32vec4 workspace_layer_confirm_rect(void) {
+        return (f32vec4) {
+                .x = ENN_WORKSPACE_CONFIRM_X1,
+                .y = ENN_WORKSPACE_CONFIRM_Y1,
+                .z = ENN_WORKSPACE_CONFIRM_X2 - ENN_WORKSPACE_CONFIRM_X1,
+                .w = ENN_WORKSPACE_CONFIRM_Y2 - ENN_WORKSPACE_CONFIRM_Y1
+        };
+}
+
+ENNDEF_PUBLIC void workspace_layer_start_typing_state(void) {
+        DEBUG_TRACE();
+        typing_state = true;
+        input_string.end = input_string.start;
+        if (input_string.capacity > 0) input_string.data[input_string.end] = 0;
+        cursor_state = true;
+        last_cursor_change = glfwGetTime();
+        name_conflict_error = false;
+        hovered_confirm_button = false;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void workspace_layer_create_current_workspace(void) {
+        DEBUG_TRACE();
+        if (vector_size(input_string) == 0) {
+                workspace_layer_exit_typing_state();
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        bool conflict = false;
+        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
+                if (strcmp(workspaces.data[i].workspace_name, input_string.data + input_string.start) == 0) {
+                        conflict = true;
+                        break;
+                }
+        }
+
+        if (conflict) {
+                name_conflict_error = true;
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        name_conflict_error = false;
+        char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(input_string.data + input_string.start) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
+        sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", input_string.data + input_string.start, ENN_DATAFILE_FILE_EXTENSION);
+
+        file_write_cstring(path, "", 0);
+
+        WorkspaceData new_ws;
+        new_ws.dim = (f32vec2) { 0.0, ENN_WORKSPACE_ITEM_DIM_Y };
+        new_ws.pos = (f32vec2) { 0.0, 0.0 };
+
+        new_ws.workspace_name = calloc(strlen(input_string.data + input_string.start) + 1, (sizeof (char)));
+        strcpy(new_ws.workspace_name, input_string.data + input_string.start);
+
+        struct tm last_modified = *localtime(&(time_t) { file_get_date(path) } );
+        new_ws.workspace_last_modified = calloc((sizeof ENN_SAVE_DATA_FMT) * 2, (sizeof (char)));
+        strftime(new_ws.workspace_last_modified, (sizeof ENN_SAVE_DATA_FMT) * 2, ENN_SAVE_DATA_FMT, &last_modified);
+
+        vector_push_back(workspaces, new_ws);
+        vector_sort(workspaces, workspace_cmp, workspaces.start, workspaces.end);
+
+        selected_workspace = NULL;
+        hovered_workspace = NULL;
+
+        workspace_layer_update_scroll_and_positions();
+
+        free(path);
+        workspace_layer_exit_typing_state();
         DEBUG_UNTRACE();
 }
 
@@ -409,7 +504,26 @@ void workspace_layer_on_render(void) {
                 render_rectangle_push(
                         (f32vec2) { ENN_SCREEN_MIN_COORD, ENN_SCREEN_MIN_COORD },
                         (f32vec2) { ENN_SCREEN_MAX_COORD, ENN_SCREEN_MAX_COORD },
-                        ENN_TYPING_OVERLAY_COLOR
+                        ENN_WORKSPACE_BKG_COLOR
+                );
+                render_rectangle_push(
+                        (f32vec2) { ENN_WORKSPACE_PANEL_X1 - ENN_WORKSPACE_BORDER_WIDTH, ENN_WORKSPACE_PANEL_Y1 - ENN_WORKSPACE_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                        (f32vec2) { ENN_WORKSPACE_PANEL_X2 + ENN_WORKSPACE_BORDER_WIDTH, ENN_WORKSPACE_PANEL_Y2 + ENN_WORKSPACE_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                        ENN_WORKSPACE_BORDER_COLOR
+                );
+                render_rectangle_push(
+                        (f32vec2) { ENN_WORKSPACE_PANEL_X1, ENN_WORKSPACE_PANEL_Y1 },
+                        (f32vec2) { ENN_WORKSPACE_PANEL_X2, ENN_WORKSPACE_PANEL_Y2 },
+                        ENN_WORKSPACE_PANEL_COLOR
+                );
+
+                render_text_push(
+                        (f32vec2) { ENN_WORKSPACE_PANEL_X1, -0.23 },
+                        (f32vec2) { ENN_WORKSPACE_PANEL_X2, -0.15 },
+                        ENN_WORKSPACE_TITLE_TEXT,
+                        ENN_TEXT_COLOR_WHITE,
+                        ENN_WORKSPACE_TITLE_HEIGHT,
+                        ENN_CENTER_ALIGN
                 );
 
                 f64 time = glfwGetTime();
@@ -419,10 +533,10 @@ void workspace_layer_on_render(void) {
                 }
 
                 f32 render_text_ratio = ((f32)global_render.font_atlas.char_dim.x / (f32)global_render.font_atlas.char_dim.y);
-                f32 text_width = vector_size(input_string) * ENN_INPUT_STRING_TEXT_HEIGHT * render_text_ratio;
+                f32 text_width = vector_size(input_string) * ENN_WORKSPACE_INPUT_HEIGHT * render_text_ratio;
 
-                f32vec2 text_pos1 = { ENN_SCREEN_MIN_COORD, -ENN_INPUT_STRING_TEXT_HEIGHT / 2.0 };
-                f32vec2 text_pos2 = { ENN_SCREEN_MAX_COORD, ENN_INPUT_STRING_TEXT_HEIGHT / 2.0 };
+                f32vec2 text_pos1 = { ENN_WORKSPACE_PANEL_X1 + 0.08, -0.08 };
+                f32vec2 text_pos2 = { ENN_WORKSPACE_PANEL_X2 - 0.08, 0.07 };
 
                 if (vector_size(input_string) > 0) {
                         render_text_push(
@@ -430,32 +544,53 @@ void workspace_layer_on_render(void) {
                                 text_pos2,
                                 input_string.data + input_string.start,
                                 ENN_TEXT_COLOR_WHITE,
-                                ENN_INPUT_STRING_TEXT_HEIGHT,
+                                ENN_WORKSPACE_INPUT_HEIGHT,
                                 ENN_CENTER_ALIGN
                         );
                 } else {
                         render_text_push(
                                 text_pos1,
                                 text_pos2,
-                                ENN_PLACEHOLDER_TEXT_STRING,
-                                ENN_PLACEHOLDER_TEXT_COLOR,
-                                ENN_INPUT_STRING_TEXT_HEIGHT,
+                                "NAME",
+                                ENN_WORKSPACE_MUTED_TEXT_COLOR,
+                                ENN_WORKSPACE_INPUT_HEIGHT,
                                 ENN_CENTER_ALIGN
                         );
                 }
 
                 if (cursor_state) {
+                        f32 cursor_x = text_width * 0.5 + ENN_WORKSPACE_INPUT_HEIGHT * render_text_ratio * 0.25;
                         render_rectangle_push(
-                                (f32vec2) { text_width / 2.0, text_pos1.y },
-                                (f32vec2) { text_width / 2.0 + ENN_INPUT_STRING_TEXT_HEIGHT * render_text_ratio / 2.0, text_pos2.y },
+                                (f32vec2) { cursor_x, text_pos1.y },
+                                (f32vec2) { cursor_x + ENN_WORKSPACE_INPUT_HEIGHT * render_text_ratio * 0.25, text_pos2.y },
                                 ENN_TEXT_COLOR_WHITE
                         );
                 }
 
+                // f32vec4 confirm_rect = workspace_layer_confirm_rect();
+                // render_rectangle_push(
+                //         (f32vec2) { confirm_rect.x - ENN_WORKSPACE_BORDER_WIDTH, confirm_rect.y - ENN_WORKSPACE_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                //         (f32vec2) { confirm_rect.x + confirm_rect.z + ENN_WORKSPACE_BORDER_WIDTH, confirm_rect.y + confirm_rect.w + ENN_WORKSPACE_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
+                //         ENN_WORKSPACE_BORDER_COLOR
+                // );
+                // render_rectangle_push(
+                //         (f32vec2) { confirm_rect.x, confirm_rect.y },
+                //         (f32vec2) { confirm_rect.x + confirm_rect.z, confirm_rect.y + confirm_rect.w },
+                //         hovered_confirm_button ? ENN_WORKSPACE_CONFIRM_HOVER_COLOR : ENN_WORKSPACE_PANEL_COLOR
+                // );
+                // render_text_push(
+                //         (f32vec2) { confirm_rect.x, confirm_rect.y + (confirm_rect.w - ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT) * 0.5 },
+                //         (f32vec2) { confirm_rect.x + confirm_rect.z, confirm_rect.y + (confirm_rect.w + ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT) * 0.5 },
+                //         ENN_WORKSPACE_CONFIRM_TEXT,
+                //         hovered_confirm_button ? ENN_TEXT_COLOR_MUTED : ENN_TEXT_COLOR_WHITE,
+                //         ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT,
+                //         ENN_CENTER_ALIGN
+                // );
+
                 if (name_conflict_error) {
                         render_text_push(
-                                (f32vec2) { ENN_SCREEN_MIN_COORD, ENN_ERROR_TEXT_POS_Y1 },
-                                (f32vec2) { ENN_SCREEN_MAX_COORD, ENN_ERROR_TEXT_POS_Y2 },
+                                (f32vec2) { ENN_WORKSPACE_PANEL_X1, 0.27 },
+                                (f32vec2) { ENN_WORKSPACE_PANEL_X2, 0.31 },
                                 ENN_ERROR_TEXT_STRING,
                                 ENN_TEXT_COLOR_RED,
                                 ENN_ERROR_TEXT_HEIGHT,
@@ -480,7 +615,16 @@ void workspace_layer_on_event(Event* event) {
                                 if (data -> action == GLFW_PRESS) {
                                         f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
                                         if (typing_state) {
-                                                workspace_layer_exit_typing_state();
+                                                f32vec4 panel_rect = {
+                                                        ENN_WORKSPACE_PANEL_X1,
+                                                        ENN_WORKSPACE_PANEL_Y1,
+                                                        ENN_WORKSPACE_PANEL_X2 - ENN_WORKSPACE_PANEL_X1,
+                                                        ENN_WORKSPACE_PANEL_Y2 - ENN_WORKSPACE_PANEL_Y1
+                                                };
+                                                if (is_inside_rectangle(ndc, workspace_layer_confirm_rect()))
+                                                        workspace_layer_create_current_workspace();
+                                                else if (!is_inside_rectangle(ndc, panel_rect))
+                                                        workspace_layer_exit_typing_state();
                                                 break;
                                         }
 
@@ -507,12 +651,7 @@ void workspace_layer_on_event(Event* event) {
                                                 switch (buttons.hover -> id) {
                                                         case ENN_CREATE_WORKSPACE_BUTTON_ID:
                                                         {
-                                                                typing_state = true;
-                                                                input_string.end = input_string.start;
-                                                                if (input_string.capacity > 0) input_string.data[input_string.end] = 0;
-                                                                cursor_state = true;
-                                                                last_cursor_change = glfwGetTime();
-                                                                name_conflict_error = false;
+                                                                workspace_layer_start_typing_state();
                                                                 break;
                                                         }
                                                         case ENN_BACK_BUTTON_ID:
@@ -555,10 +694,12 @@ void workspace_layer_on_event(Event* event) {
                 }
                 case ENN_INPUT_MOUSE_MOVE_EVENT:
                 {
-                        if (!typing_state) {
-                                f64vec2* data = event -> data;
-                                f32vec2 ndc = screen_to_ndc((f32vec2) { data -> x, data -> y });
+                        f64vec2* data = event -> data;
+                        f32vec2 ndc = screen_to_ndc((f32vec2) { data -> x, data -> y });
 
+                        if (typing_state) {
+                                hovered_confirm_button = is_inside_rectangle(ndc, workspace_layer_confirm_rect());
+                        } else {
                                 if (is_dragging_scrollbar) {
                                         f32 box_h = workspaces_box.w - workspaces_box.y;
                                         f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
@@ -617,51 +758,8 @@ void workspace_layer_on_event(Event* event) {
                                 }
                         }
                         if (data -> key == GLFW_KEY_ENTER && data -> action == GLFW_PRESS) {
-                                if (typing_state) {
-                                        if (vector_size(input_string) > 0) {
-                                                bool conflict = false;
-                                                for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                                                        if (strcmp(workspaces.data[i].workspace_name, input_string.data + input_string.start) == 0) {
-                                                                conflict = true;
-                                                                break;
-                                                        }
-                                                }
-
-                                                if (conflict) {
-                                                        name_conflict_error = true;
-                                                } else {
-                                                        name_conflict_error = false;
-                                                        char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(input_string.data + input_string.start) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
-                                                        sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", input_string.data + input_string.start, ENN_DATAFILE_FILE_EXTENSION);
-                                                        
-                                                        file_write_cstring(path, "", 0);
-
-                                                        WorkspaceData new_ws;
-                                                        new_ws.dim = (f32vec2) { 0.0, ENN_WORKSPACE_ITEM_DIM_Y };
-                                                        new_ws.pos = (f32vec2) { 0.0, 0.0 };
-
-                                                        new_ws.workspace_name = calloc(strlen(input_string.data + input_string.start) + 1, (sizeof (char)));
-                                                        strcpy(new_ws.workspace_name, input_string.data + input_string.start);
-
-                                                        struct tm last_modified = *localtime(&(time_t) { file_get_date(path) } );
-                                                        new_ws.workspace_last_modified = calloc((sizeof ENN_SAVE_DATA_FMT) * 2, (sizeof (char)));
-                                                        strftime(new_ws.workspace_last_modified, (sizeof ENN_SAVE_DATA_FMT) * 2, ENN_SAVE_DATA_FMT, &last_modified);
-
-                                                        vector_push_back(workspaces, new_ws);
-                                                        vector_sort(workspaces, workspace_cmp, workspaces.start, workspaces.end);
-
-                                                        selected_workspace = NULL;
-                                                        hovered_workspace = NULL;
-
-                                                        workspace_layer_update_scroll_and_positions();
-                                                        
-                                                        free(path);
-                                                        workspace_layer_exit_typing_state();
-                                                }
-                                        } else {
-                                                workspace_layer_exit_typing_state();
-                                        }
-                                }
+                                if (typing_state)
+                                        workspace_layer_create_current_workspace();
                         }
                         break;
                 }
