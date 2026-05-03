@@ -126,6 +126,7 @@ void escape_menu_layer_on_event(Event* event) {
                                         }
                                         default: break;
                                 }
+                                
                         }
                         break;
                 }

@@ -8,7 +8,7 @@
 #define CIRCUIT_PIN_COLOR                               0x202020FF
 #define CIRCUIT_PIN_HOVER_COLOR                         0xFFFFFFFF
 
-#define CIRCUIT_WIRE_WIDTH                              1.5
+#define CIRCUIT_WIRE_WIDTH                              0.75
 
 #define CIRCUIT_INDICATOR_BODY_WIDTH                    10
 #define CIRCUIT_INDICATOR_BODY_HEIGHT                   10
@@ -19,7 +19,10 @@
 #define CIRCUIT_INDICATOR_SOFT_BORDER_PADDING           0.75
 #define CIRCUIT_INDICATOR_HARD_BORDER_COLOR             CIRCUIT_PIN_COLOR
 #define CIRCUIT_INDICATOR_OVERLAY_COLOR                 0xFFFFFF80
+#define CIRCUIT_INDICATOR_OVERLAY_COLLISION_COLOR       0xcc241d80
 #define CIRCUIT_INDICATOR_OVERLAY_PADDING               2
+#define CIRCUIT_INDICATOR_HITBOX_WIDTH                  (CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_PIN_WIDTH)
+#define CIRCUIT_INDICATOR_HITBOX_HEIGHT                 (CIRCUIT_INDICATOR_BODY_HEIGHT)
 
 #define CIRCUIT_COLOR_RED_DARK                          0x801f1bFF
 #define CIRCUIT_COLOR_ORANGE_DARK                       0x9d5511FF
@@ -50,15 +53,29 @@
 #define CIRCUIT_COLOR_PURPLE_LIGHT_DARK                 0xb16286FF
 
 #define CIRCUIT_CHIP_BORDER_PADDING                     1
-#define CIRCUIT_CHIP_NAME_PADDING                       3
-#define CIRCUIT_CHIP_NAME_TEXT_HEIGHT                   3
+#define CIRCUIT_CHIP_NAME_PADDING                       2.5
+#define CIRCUIT_CHIP_NAME_TEXT_HEIGHT                   4
+#define CIRCUIT_CHIP_NAME_TEXT_WIDTH                    4
 #define CIRCUIT_CHIP_NAME_TEXT_COLOR                    0xFFFFFFFF
-#define CIRCUIT_CHIP_PIN_PADDING                        2
+#define CIRCUIT_CHIP_PIN_PADDING                        3
 #define CIRCUIT_CHIP_MAX_NAME_LEN                       128
 #define CIRCUIT_CHIP_OVERLAY_COLOR                      0xFFFFFF80
+#define CIRCUIT_CHIP_OVERLAY_COLLISION_COLOR       0xcc241d80
 #define CIRCUIT_CHIP_OVERLAY_PADDING                    2
 
 #define CIRCUIT_SELECTION_BOX_COLOR                     0xFFFFFF50
+
+#define CIRCUIT_ELEMENT_OVERLAY_COLOR                   0xFFFFFF80
+
+typedef enum {
+        ENN_ACTION_NOTHING,
+        ENN_ACTION_PANNING,
+        ENN_ACTION_SELECTING,
+        ENN_ACTION_MOVING,
+        ENN_ACTION_WIRING
+} ENN_GAME_ACTION;
+
+extern ENN_GAME_ACTION current_action;
 
 typedef enum ENN_CIRCUIT_ELEMENT_COLORS {
         ENN_INTERNAL_COLOR_RED,
@@ -132,10 +149,13 @@ typedef i32 OutputIndicatorIndex;
 typedef enum ENN_CIRCUIT_ELEMENT_TYPE {
         ENN_INTERNAL_PIN,
         ENN_EXTERNAL_PIN,
+
         ENN_INPUT_INDICATOR,
         ENN_OUTPUT_INDICATOR,
+
         ENN_INTERNAL_WIRE,
         ENN_EXTERNAL_WIRE,
+        
         ENN_INTERNAL_GATE,
         ENN_CHIP
 } ENN_CIRCUIT_ELEMENT_TYPE;
@@ -146,68 +166,86 @@ typedef struct CircuitElement {
 } CircuitElement;
 
 typedef struct InternalPin {
+        InternalPinIndex id;
         bool    curr_state : 1;
         bool    next_state : 1;
+        CircuitElement                  parent;
+        vector(InternalWireIndex)       connections;
 } InternalPin;
 
-typedef struct InternalWire {
-        InternalPinIndex from;
-        InternalPinIndex to;
-} InternalWire;
-
 typedef struct InternalNANDGate {
+        InternalNANDGateIndex id;
         InternalPinIndex input_a;
         InternalPinIndex input_b;
         InternalPinIndex output;
 } InternalNANDGate;
 
+typedef enum ExternalPinType {
+        ENN_INPUT_PIN,
+        ENN_OUTPUT_PIN
+} ExternalPinType;
+
 typedef struct ExternalPin {
-        InternalPinIndex        internal;
-        f32vec2                 pos;
-        CircuitElement          parent;
+        ExternalPinIndex                id;
+        InternalPinIndex                internal;
+        f32vec2                         pos;
+        ExternalPinType                 type;
+        CircuitElement                  parent;
+        vector(ExternalWireIndex)       connections;
 } ExternalPin;
 
+typedef struct InternalWire {
+        InternalWireIndex       id;
+        InternalPinIndex        from;
+        InternalPinIndex        to;
+} InternalWire;
+
 typedef struct ExternalWire {
-        InternalWireIndex       internal;
-        ExternalPinIndex        from;
-        ExternalPinIndex        to;
-        vector(f32vec2)         anchors;
+        ExternalWireIndex               id;
+        InternalWireIndex               internal;
+        ExternalPinIndex                from;
+        ExternalPinIndex                to;
+        ENN_CIRCUIT_ELEMENT_COLORS      color;
+        vector(f32vec2)                 anchors;
 } ExternalWire;
 
-typedef struct BlueprintSubChip {
-        BlueprintChipIndex      blueprint_id;
-} BlueprintSubChip;
-
 typedef struct BlueprintWire {
-        i32                     from_sub_chip;
-        i32                     from_pin;
-        i32                     to_sub_chip;
-        i32                     to_pin;
+        BlueprintChipIndex      from_sub_chip;
+        InternalPinIndex        from_pin;
+
+        BlueprintChipIndex      to_sub_chip;
+        InternalPinIndex        to_pin;
 } BlueprintWire;
 
 typedef struct BlueprintChip {
+        BlueprintChipIndex              id;
         char                            name[CIRCUIT_CHIP_MAX_NAME_LEN];
         ENN_CIRCUIT_ELEMENT_COLORS      color;
         i32                             num_inputs;
         i32                             num_outputs; 
 
-        vector(BlueprintSubChip)        sub_chips;
+        vector(BlueprintChipIndex)      sub_chips;
         vector(BlueprintWire)           wires;
 } BlueprintChip;
 
 typedef struct ExternalChip {
+        ExternalChipIndex               id;
         BlueprintChipIndex              blueprint;
         f32vec2                         pos;
         f32vec2                         dim;
+        vector(ExternalPinIndex)        input_pins;
+        vector(ExternalPinIndex)        output_pins;
 } ExternalChip;
 
 typedef struct InputIndicator {
+        InputIndicatorIndex             id;
         f32vec2                         pos;
         ExternalPinIndex                output_pin;
         ENN_CIRCUIT_ELEMENT_COLORS      color;
 } InputIndicator;
 
 typedef struct OutputIndicator {
+        OutputIndicatorIndex            id;
         f32vec2                         pos;
         ExternalPinIndex                input_pin;
         ENN_CIRCUIT_ELEMENT_COLORS      color;
@@ -233,565 +271,623 @@ typedef struct Circuit {
 
 extern Circuit global_circuit;
 
+ENNDEF_PUBLIC ENN_CIRCUIT_ELEMENT_COLORS circuit_get_pin_color(ExternalPinIndex pin) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(pin != global_circuit.external_pins.end);
+        ENN_CIRCUIT_ELEMENT_COLORS color = ENN_INTERNAL_COLOR_LAST;
+        switch (global_circuit.external_pins.data[pin].parent.type) {
+                case ENN_INPUT_INDICATOR:
+                {
+                        color = global_circuit.input_indicators.data[global_circuit.external_pins.data[pin].parent.index].color;
+                        break;
+                }
+                case ENN_OUTPUT_INDICATOR:
+                {
+                        color = global_circuit.output_indicators.data[global_circuit.external_pins.data[pin].parent.index].color;
+                        break;
+                }
+                case ENN_CHIP:
+                {
+                        color = global_circuit.blueprints.data[global_circuit.external_chips.data[global_circuit.external_pins.data[pin].parent.index].blueprint].color;
+                        break;
+                }
+                default: break;
+
+        }
+        DEBUG_UNTRACE();
+        return color;
+}
+
+ENNDEF_PUBLIC InternalPinIndex circuit_summon_internal_pin(CircuitElement parent) {
+        DEBUG_TRACE();
+        InternalPin new_pin; memset(&new_pin, 0x0, (sizeof (InternalPin)));
+        new_pin.id = global_circuit.internal_pins.end;
+        new_pin.parent = parent;
+        vector_push_back(global_circuit.internal_pins, new_pin);
+        DEBUG_UNTRACE();
+        return new_pin.id;
+}
+
+ENNDEF_PUBLIC InternalWireIndex circuit_summon_internal_wire(InternalPinIndex from, InternalPinIndex to) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(from != global_circuit.internal_pins.end);
+        DEBUG_ASSERT(to != global_circuit.internal_pins.end);
+        InternalWire new_wire; memset(&new_wire, 0x0, (sizeof (InternalWire)));
+        new_wire.id = global_circuit.internal_wires.end;
+        new_wire.from = from;
+        new_wire.to = to;
+        vector_push_back(global_circuit.internal_wires, new_wire);
+        vector_push_back(global_circuit.internal_pins.data[from].connections, new_wire.id);
+        vector_push_back(global_circuit.internal_pins.data[to].connections, new_wire.id);
+        DEBUG_UNTRACE();
+        return new_wire.id;
+}
+
+ENNDEF_PUBLIC ExternalPinIndex circuit_summon_external_pin(f32vec2 pos, ExternalPinType type, CircuitElement parent) {
+        DEBUG_TRACE();
+        ExternalPin new_pin;
+        memset(&new_pin, 0x0, (sizeof (ExternalPin)));
+        new_pin.id = global_circuit.external_pins.end;
+        new_pin.pos = pos;
+        new_pin.type = type;
+        new_pin.parent = parent;
+        new_pin.internal = circuit_summon_internal_pin((CircuitElement) { .index = new_pin.id, ENN_EXTERNAL_PIN });
+        vector_push_back(global_circuit.external_pins, new_pin);
+        DEBUG_UNTRACE();
+        return new_pin.id;
+}
+
+ENNDEF_PUBLIC ExternalWireIndex circuit_summon_external_wire(f32vec2* anchors, i32 anchor_count, ExternalPinIndex from, ExternalPinIndex to) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(from != global_circuit.external_pins.end);
+        DEBUG_ASSERT(to != global_circuit.external_pins.end);
+
+        if (global_circuit.external_pins.data[from].type == global_circuit.external_pins.data[to].type) {
+                DEBUG_LOG("[Game Objects] Tried summoning a wire between 2 pins of the same type");
+                DEBUG_UNTRACE();
+                return global_circuit.external_pins.end;
+        }
+
+        ExternalWire new_wire; memset(&new_wire, 0x0, (sizeof (ExternalWire)));
+        new_wire.color = circuit_get_pin_color(from);
+        if (global_circuit.external_pins.data[from].type == ENN_INPUT_PIN) swap(from, to);
+
+        new_wire.id = global_circuit.external_wires.end;
+        new_wire.internal = circuit_summon_internal_wire(global_circuit.external_pins.data[from].internal, global_circuit.external_pins.data[to].internal);
+        new_wire.from = from;
+        new_wire.to = to;
+        if (anchor_count > 0 && anchors != NULL) {
+                vector_reserve(new_wire.anchors, anchor_count);
+                memcpy(new_wire.anchors.data + new_wire.anchors.start, anchors, (sizeof (f32vec2)) * anchor_count);
+                new_wire.anchors.end += anchor_count;
+        }
+        vector_push_back(global_circuit.external_wires, new_wire);
+        DEBUG_UNTRACE();
+        return new_wire.id;
+}
+
+ENNDEF_PUBLIC InputIndicatorIndex circuit_summon_input_indicator(f32vec2 pos, ENN_CIRCUIT_ELEMENT_COLORS color) {
+        DEBUG_TRACE();
+        InputIndicator new_indicator; memset(&new_indicator, 0x0, (sizeof (InputIndicator)));
+        new_indicator.id = global_circuit.input_indicators.end;
+        new_indicator.pos = pos;
+        new_indicator.color = color;
+        new_indicator.output_pin = circuit_summon_external_pin(
+                (f32vec2) { new_indicator.pos.x + CIRCUIT_INDICATOR_HITBOX_WIDTH - CIRCUIT_PIN_WIDTH, new_indicator.pos.y + (CIRCUIT_INDICATOR_HITBOX_HEIGHT - CIRCUIT_PIN_HEIGHT) * 0.5 },
+                ENN_OUTPUT_PIN, 
+                (CircuitElement) { .index = new_indicator.id, .type = ENN_INPUT_INDICATOR }
+        );
+        vector_push_back(global_circuit.input_indicators, new_indicator);
+        DEBUG_UNTRACE();
+        return new_indicator.id;
+}
+
+ENNDEF_PUBLIC OutputIndicatorIndex circuit_summon_output_indicator(f32vec2 pos, ENN_CIRCUIT_ELEMENT_COLORS color) {
+        DEBUG_TRACE();
+        OutputIndicator new_indicator; memset(&new_indicator, 0x0, (sizeof (OutputIndicator)));
+        new_indicator.id = global_circuit.output_indicators.end;
+        new_indicator.pos = pos;
+        new_indicator.color = color;
+        new_indicator.input_pin = circuit_summon_external_pin(
+                (f32vec2) { new_indicator.pos.x - CIRCUIT_PIN_WIDTH, new_indicator.pos.y + (CIRCUIT_INDICATOR_HITBOX_HEIGHT - CIRCUIT_PIN_HEIGHT) * 0.5 },
+                ENN_INPUT_PIN, 
+                (CircuitElement) { .index = new_indicator.id, .type = ENN_OUTPUT_INDICATOR }
+        );
+        vector_push_back(global_circuit.output_indicators, new_indicator);
+        DEBUG_UNTRACE();
+        return new_indicator.id;
+}
+
+ENNDEF_PUBLIC ExternalChipIndex circuit_summon_chip(f32vec2 pos, BlueprintChipIndex blueprint) {
+        DEBUG_TRACE();
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_destroy_internal_pin(InternalPinIndex pin) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(pin != global_circuit.internal_pins.end);
+        vector_destroy(global_circuit.internal_pins.data[pin].connections);
+        memset(&global_circuit.internal_pins.data[pin], 0x0, (sizeof (InternalPin)));
+        vector_remove_at_index(global_circuit.internal_pins, pin);
+
+        switch (global_circuit.internal_pins.data[pin].parent.type) {
+                case ENN_EXTERNAL_PIN:
+                {
+                        global_circuit.external_pins.data[global_circuit.internal_pins.data[pin].parent.index].internal = pin; 
+                        break;
+                }
+                default: break;
+        }
+        
+        for (i32 i = global_circuit.internal_pins.data[pin].connections.start; i < global_circuit.internal_pins.data[pin].connections.start; ++i) {
+                InternalWire* wire = &global_circuit.internal_wires.data[global_circuit.internal_pins.data[pin].connections.data[i]];
+                if (wire -> from == global_circuit.internal_pins.data[pin].id) wire -> from = pin;
+                else wire -> to = pin;
+                
+        }
+
+        global_circuit.internal_pins.data[pin].id = pin;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_destroy_internal_wire(InternalWireIndex wire) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(wire != global_circuit.internal_wires.end);
+        
+        InternalPin* from = &global_circuit.internal_pins.data[global_circuit.internal_wires.data[wire].from];
+        for (i32 i = from -> connections.start; i < from -> connections.end; ++i) {
+                if (from -> connections.data[i] == wire) {
+                        vector_remove_at_index(from -> connections, i);
+                        break;
+                }
+        }
+
+        InternalPin* to = &global_circuit.internal_pins.data[global_circuit.internal_wires.data[wire].to];
+        for (i32 i = to -> connections.start; i < to -> connections.end; ++i) {
+                if (to -> connections.data[i] == wire) {
+                        vector_remove_at_index(to -> connections, i);
+                        break;
+                }
+        }
+
+        memset(&global_circuit.internal_wires.data[wire], 0x0, (sizeof (InternalWire)));
+        vector_remove_at_index(global_circuit.internal_wires, wire);
+
+        from = &global_circuit.internal_pins.data[global_circuit.internal_wires.data[wire].from];
+        to = &global_circuit.internal_pins.data[global_circuit.internal_wires.data[wire].to];
+        for (i32 i = from -> connections.start; i < from -> connections.end; ++i)
+                if (from -> connections.data[i] == global_circuit.internal_wires.data[wire].id) {
+                        from -> connections.data[i] = wire;
+                        break;
+                }
+
+        for (i32 i = to -> connections.start; i < to -> connections.end; ++i)
+                if (to -> connections.data[i] == global_circuit.internal_wires.data[wire].id) {
+                        to -> connections.data[i] = wire;
+                        break;
+                }
+
+        global_circuit.internal_wires.data[wire].id = wire;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_destroy_external_pin(ExternalPinIndex pin) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(pin != global_circuit.external_pins.end);
+        vector_destroy(global_circuit.external_pins.data[pin].connections);
+        circuit_destroy_internal_pin(global_circuit.external_pins.data[pin].internal);
+        memset(&global_circuit.external_pins.data[pin], 0x0, (sizeof (InternalPin)));
+        vector_remove_at_index(global_circuit.external_pins, pin);
+
+        switch (global_circuit.external_pins.data[pin].parent.type) {
+                case ENN_INPUT_INDICATOR:
+                {
+                        global_circuit.input_indicators.data[global_circuit.external_pins.data[pin].parent.index].output_pin = pin; 
+                        break;
+                }
+                case ENN_OUTPUT_INDICATOR:
+                {
+                        global_circuit.output_indicators.data[global_circuit.external_pins.data[pin].parent.index].input_pin = pin; 
+                        break;
+                }
+                case ENN_CHIP:
+                {
+                        switch (global_circuit.external_pins.data[pin].type) {
+                                case ENN_INPUT_PIN:
+                                {
+                                        ExternalChip* chip = &global_circuit.external_chips.data[global_circuit.external_pins.data[pin].parent.index];
+                                        for (i32 i = chip -> input_pins.start; i < chip -> input_pins.end; ++i)
+                                                if (chip -> input_pins.data[i] == global_circuit.external_pins.data[pin].id) {
+                                                        chip -> input_pins.data[i] = pin;
+                                                        break;
+                                                }
+                                        break;
+                                }
+                                case ENN_OUTPUT_PIN:
+                                {
+                                        ExternalChip* chip = &global_circuit.external_chips.data[global_circuit.external_pins.data[pin].parent.index];
+                                        for (i32 i = chip -> output_pins.start; i < chip -> output_pins.end; ++i)
+                                                if (chip -> output_pins.data[i] == global_circuit.external_pins.data[pin].id) {
+                                                        chip -> output_pins.data[i] = pin;
+                                                        break;
+                                                }
+                                        break;
+                                }
+                                default: break;
+                        }
+                        break;
+                }
+                default: break;
+        }
+        
+        for (i32 i = global_circuit.external_pins.data[pin].connections.start; i < global_circuit.external_pins.data[pin].connections.start; ++i) {
+                InternalWire* wire = &global_circuit.internal_wires.data[global_circuit.external_pins.data[pin].connections.data[i]];
+                if (wire -> from == global_circuit.external_pins.data[pin].id) wire -> from = pin;
+                else wire -> to = pin;
+                
+        }
+
+        global_circuit.external_pins.data[pin].id = pin;
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_destroy_input_indicator(InputIndicatorIndex indicator) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(indicator != global_circuit.input_indicators.end);
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_destroy_output_indicator(OutputIndicatorIndex indicator) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(indicator != global_circuit.output_indicators.end);
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_destroy_chip(ExternalChipIndex chip) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(chip != global_circuit.external_chips.end);
+        DEBUG_UNTRACE();
+}
+
+
+ENNDEF_PUBLIC void circuit_update_tick(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.internal_wires.start; i < global_circuit.internal_wires.end; ++i) {
+                InternalPinIndex from   = global_circuit.external_wires.data[i].from;
+                InternalPinIndex to     = global_circuit.external_wires.data[i].to;
+                global_circuit.internal_pins.data[to].next_state = global_circuit.internal_pins.data[from].curr_state;
+        }
+        
+        for (i32 i = global_circuit.internal_gates.start; i < global_circuit.internal_gates.end; ++i) {
+                InternalPinIndex in_a = global_circuit.internal_gates.data[i].input_a;
+                InternalPinIndex in_b = global_circuit.internal_gates.data[i].input_b;
+                InternalPinIndex out = global_circuit.internal_gates.data[i].output;
+                bool a = global_circuit.internal_pins.data[in_a].curr_state;
+                bool b = global_circuit.internal_pins.data[in_b].curr_state;
+                global_circuit.internal_pins.data[out].next_state = !(a && b);
+        }
+        
+        for (i32 i = global_circuit.internal_pins.start; i < global_circuit.internal_pins.end; ++i) {
+                global_circuit.internal_pins.data[i].curr_state = global_circuit.internal_pins.data[i].next_state;
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_check_hovered_pin(f32vec2 pos) {
+        DEBUG_TRACE();
+        global_circuit.hovered_pin = global_circuit.external_pins.end;
+        for (i32 i = global_circuit.external_pins.start; i < global_circuit.external_pins.end; ++i)
+                if (is_inside_rectangle(pos,
+                        (f32vec4) {
+                                .x = global_circuit.external_pins.data[i].pos.x,
+                                .y = global_circuit.external_pins.data[i].pos.y,
+                                .z = CIRCUIT_PIN_WIDTH,
+                                .w = CIRCUIT_PIN_HEIGHT
+                        })) {
+                                global_circuit.hovered_pin = i;
+                                break;
+                        }
+        DEBUG_UNTRACE();
+}
+
 ENNDEF_PUBLIC void circuit_render_pins(void) {
+        DEBUG_TRACE();
         for (i32 i = global_circuit.external_pins.start; i < global_circuit.external_pins.end; ++i) {
                 render_rectangle_push(
-                        global_circuit.external_pins.data[i].pos,
+                        global_circuit.external_pins.data[i].pos, 
                         (f32vec2) { global_circuit.external_pins.data[i].pos.x + CIRCUIT_PIN_WIDTH, global_circuit.external_pins.data[i].pos.y + CIRCUIT_PIN_HEIGHT },
                         CIRCUIT_PIN_COLOR
                 );
         }
-
-        if (global_circuit.hovered_pin != global_circuit.external_pins.end) 
+        if (global_circuit.hovered_pin != global_circuit.external_pins.end) {
                 render_rectangle_push(
-                        global_circuit.external_pins.data[global_circuit.hovered_pin].pos,
+                        global_circuit.external_pins.data[global_circuit.hovered_pin].pos, 
                         (f32vec2) { global_circuit.external_pins.data[global_circuit.hovered_pin].pos.x + CIRCUIT_PIN_WIDTH, global_circuit.external_pins.data[global_circuit.hovered_pin].pos.y + CIRCUIT_PIN_HEIGHT },
                         CIRCUIT_PIN_HOVER_COLOR
                 );
+        }
+        DEBUG_UNTRACE();
 }
 
-ENNDEF_PUBLIC void circuit_render_wires(void) {
+ENNDEF_PUBLIC void circuit_render_wires_edit(void) {
+        DEBUG_TRACE();
         for (i32 i = global_circuit.external_wires.start; i < global_circuit.external_wires.end; ++i) {
-                u32 color = 0xFFFFFFFF;
-                const ExternalPin* pin = &global_circuit.external_pins.data[global_circuit.external_wires.data[i].from];
-                switch (pin -> parent.type) {
-                        case ENN_INPUT_INDICATOR:
-                        {
-                                if (global_circuit.internal_pins.data[pin -> internal].curr_state)
-                                        color = color_light_get_by_circuit_color(global_circuit.input_indicators.data[pin -> parent.index].color);
-                                else 
-                                        color = color_dark_get_by_circuit_color(global_circuit.input_indicators.data[pin -> parent.index].color);
-                                break;
-                        }
-                        case ENN_OUTPUT_INDICATOR:
-                        {
-                                if (global_circuit.internal_pins.data[pin -> internal].curr_state)
-                                        color = color_light_get_by_circuit_color(global_circuit.output_indicators.data[pin -> parent.index].color);
-                                else 
-                                        color = color_dark_get_by_circuit_color(global_circuit.output_indicators.data[pin -> parent.index].color);
-                                break;
-                        }
-                        case ENN_CHIP:
-                        {
-                                if (global_circuit.internal_pins.data[pin -> internal].curr_state)
-                                        color = color_light_get_by_circuit_color(global_circuit.blueprints.data[global_circuit.external_chips.data[pin -> parent.index].blueprint].color);
-                                else 
-                                        color = color_dark_get_by_circuit_color(global_circuit.blueprints.data[global_circuit.external_chips.data[pin -> parent.index].blueprint].color);
-                                break;
-                        }
-                        default: break;
-                }
                 render_multiline_push(
                         global_circuit.external_wires.data[i].anchors.data + global_circuit.external_wires.data[i].anchors.start,
                         vector_size(global_circuit.external_wires.data[i].anchors), 
-                        CIRCUIT_PIN_WIDTH,
-                        color
+                        CIRCUIT_WIRE_WIDTH,
+                        color_dark_get_by_circuit_color(global_circuit.external_wires.data[i].color)
                 );
         }
+        DEBUG_UNTRACE();
 }
 
-ENNDEF_PUBLIC void circuit_render_input_indicators(void) {
-        for (i32 i = global_circuit.input_indicators.start; i < global_circuit.input_indicators.end; ++i) {
-                // render_sprite_push(
-                //         global_circuit.input_indicators.data[i].pos,
-                //         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.input_indicators.data[i].pos.y + max(CIRCUIT_INDICATOR_BODY_HEIGHT, CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) },
-                //         &indicator_sprites[global_circuit.input_indicators.data[i].color]
-                // );
+ENNDEF_PUBLIC void circuit_render_wires_execute(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.external_wires.start; i < global_circuit.external_wires.end; ++i) {
+                const ExternalPin* pin = &global_circuit.external_pins.data[global_circuit.external_wires.data[i].from];
+                bool state = global_circuit.internal_pins.data[pin -> internal].curr_state;
+                render_multiline_push(
+                        global_circuit.external_wires.data[i].anchors.data + global_circuit.external_wires.data[i].anchors.start,
+                        vector_size(global_circuit.external_wires.data[i].anchors), 
+                        CIRCUIT_WIRE_WIDTH,
+                        state ? color_light_get_by_circuit_color(global_circuit.external_wires.data[i].color) : color_dark_get_by_circuit_color(global_circuit.external_wires.data[i].color)
+                );
+        }
+        DEBUG_UNTRACE();
+}
 
-                
+ENNDEF_PUBLIC void circuit_render_input_indicators_edit(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.input_indicators.start; i < global_circuit.input_indicators.end; ++i) {
                 render_rectangle_push(
                         global_circuit.input_indicators.data[i].pos,
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT },
                         CIRCUIT_INDICATOR_HARD_BORDER_COLOR
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH, global_circuit.input_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.input_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT + CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
                         CIRCUIT_INDICATOR_CONNECTOR_COLOR 
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
                         color_dark_dark_get_by_circuit_color(global_circuit.input_indicators.data[i].color)
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
                         (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING - CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING -  CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
                         color_dark_get_by_circuit_color(global_circuit.input_indicators.data[i].color)
                 );
         }
+        DEBUG_UNTRACE();
 }
 
-ENNDEF_PUBLIC void circuit_render_output_indicators(void) {
-        for (i32 i = global_circuit.output_indicators.start; i < global_circuit.output_indicators.end; ++i) {
-                // render_sprite_push(
-                //         global_circuit.output_indicators.data[i].pos,
-                //         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.output_indicators.data[i].pos.y + max(CIRCUIT_INDICATOR_BODY_HEIGHT, CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) },
-                //         &indicator_sprites[global_circuit.output_indicators.data[i].color]
-                // );
+ENNDEF_PUBLIC void circuit_render_input_indicators_execute(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.input_indicators.start; i < global_circuit.input_indicators.end; ++i) {
+                bool state = global_circuit.internal_pins.data[global_circuit.external_pins.data[global_circuit.input_indicators.data[i].output_pin].internal].curr_state;
+                render_rectangle_push(
+                        global_circuit.input_indicators.data[i].pos,
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT },
+                        CIRCUIT_INDICATOR_HARD_BORDER_COLOR
+                );
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH, global_circuit.input_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.input_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT + CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
+                        CIRCUIT_INDICATOR_CONNECTOR_COLOR 
+                );
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
+                        state ? color_light_dark_get_by_circuit_color(global_circuit.input_indicators.data[i].color) : color_dark_dark_get_by_circuit_color(global_circuit.input_indicators.data[i].color)
+                );
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
+                        (f32vec2) { global_circuit.input_indicators.data[i].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING - CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.input_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING -  CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
+                        state ? color_light_get_by_circuit_color(global_circuit.input_indicators.data[i].color) : color_dark_get_by_circuit_color(global_circuit.input_indicators.data[i].color)
+                );
+        }
+        DEBUG_UNTRACE();
+}
 
+ENNDEF_PUBLIC void circuit_render_output_indicators_edit(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.output_indicators.start; i < global_circuit.output_indicators.end; ++i) {
                 render_rectangle_push(
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.output_indicators.data[i].pos.y },
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT },
                         CIRCUIT_INDICATOR_HARD_BORDER_COLOR
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x, global_circuit.output_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.output_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT + CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
                         CIRCUIT_INDICATOR_CONNECTOR_COLOR 
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
                         color_dark_dark_get_by_circuit_color(global_circuit.output_indicators.data[i].color)
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
                         (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING - CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING -  CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
                         color_dark_get_by_circuit_color(global_circuit.output_indicators.data[i].color)
                 );
-
-                
         }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_render_output_indicators_execute(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.output_indicators.start; i < global_circuit.output_indicators.end; ++i) {
+                bool state = global_circuit.internal_pins.data[global_circuit.external_pins.data[global_circuit.output_indicators.data[i].input_pin].internal].curr_state;
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.output_indicators.data[i].pos.y },
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT },
+                        CIRCUIT_INDICATOR_HARD_BORDER_COLOR
+                );
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x, global_circuit.output_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH, global_circuit.output_indicators.data[i].pos.y + (CIRCUIT_INDICATOR_BODY_HEIGHT + CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5 },
+                        CIRCUIT_INDICATOR_CONNECTOR_COLOR 
+                );
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING },
+                        state ? color_light_dark_get_by_circuit_color(global_circuit.output_indicators.data[i].color) : color_dark_dark_get_by_circuit_color(global_circuit.output_indicators.data[i].color)
+                );
+                render_rectangle_push(
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_HARD_BORDER_PADDING + CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
+                        (f32vec2) { global_circuit.output_indicators.data[i].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH - CIRCUIT_INDICATOR_HARD_BORDER_PADDING - CIRCUIT_INDICATOR_SOFT_BORDER_PADDING, global_circuit.output_indicators.data[i].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT - CIRCUIT_INDICATOR_HARD_BORDER_PADDING -  CIRCUIT_INDICATOR_SOFT_BORDER_PADDING },
+                        state ? color_light_get_by_circuit_color(global_circuit.output_indicators.data[i].color) : color_dark_get_by_circuit_color(global_circuit.output_indicators.data[i].color)
+                );
+        }
+        DEBUG_UNTRACE();
 }
 
 ENNDEF_PUBLIC void circuit_render_chips(void) {
+        DEBUG_TRACE();
         for (i32 i = global_circuit.external_chips.start; i < global_circuit.external_chips.end; ++i) {
                 render_rectangle_push(
                         global_circuit.external_chips.data[i].pos,
                         (f32vec2) { global_circuit.external_chips.data[i].pos.x + global_circuit.external_chips.data[i].dim.x, global_circuit.external_chips.data[i].pos.y + global_circuit.external_chips.data[i].dim.y },
                         color_dark_get_by_circuit_color(global_circuit.blueprints.data[global_circuit.external_chips.data[i].blueprint].color)
                 );
-
                 render_rectangle_push(
                         (f32vec2) { global_circuit.external_chips.data[i].pos.x + CIRCUIT_CHIP_BORDER_PADDING, global_circuit.external_chips.data[i].pos.y + CIRCUIT_CHIP_BORDER_PADDING },
                         (f32vec2) { global_circuit.external_chips.data[i].pos.x + global_circuit.external_chips.data[i].dim.x - CIRCUIT_CHIP_BORDER_PADDING, global_circuit.external_chips.data[i].pos.y + global_circuit.external_chips.data[i].dim.y - CIRCUIT_CHIP_BORDER_PADDING },
-                        color_light_get_by_circuit_color(global_circuit.blueprints.data[global_circuit.external_chips.data[i].blueprint].color)
+                        color_light_dark_get_by_circuit_color(global_circuit.blueprints.data[global_circuit.external_chips.data[i].blueprint].color)
                 );
-
-                render_text_push(
+                render_text_push_width(
                         (f32vec2) { global_circuit.external_chips.data[i].pos.x + CIRCUIT_CHIP_NAME_PADDING, global_circuit.external_chips.data[i].pos.y + (global_circuit.external_chips.data[i].dim.y - CIRCUIT_CHIP_NAME_TEXT_HEIGHT) * 0.5 },
                         (f32vec2) { global_circuit.external_chips.data[i].pos.x + global_circuit.external_chips.data[i].dim.x - CIRCUIT_CHIP_NAME_PADDING, global_circuit.external_chips.data[i].pos.y + (global_circuit.external_chips.data[i].dim.y - CIRCUIT_CHIP_NAME_TEXT_HEIGHT) * 0.5 },
-                        global_circuit.blueprints.data[global_circuit.external_chips.data[i].blueprint].name, CIRCUIT_CHIP_NAME_TEXT_COLOR, CIRCUIT_CHIP_NAME_TEXT_HEIGHT, ENN_CENTER_ALIGN
+                        global_circuit.blueprints.data[global_circuit.external_chips.data[i].blueprint].name, CIRCUIT_CHIP_NAME_TEXT_COLOR, CIRCUIT_CHIP_NAME_TEXT_HEIGHT, CIRCUIT_CHIP_NAME_TEXT_WIDTH, ENN_CENTER_ALIGN
                 );
         }
+        DEBUG_UNTRACE();
 }
 
-ENNDEF_PUBLIC void circuit_render_objects(void) {
-        circuit_render_wires();
+ENNDEF_PUBLIC void circuit_render_selection_overlay(void) {
+        DEBUG_TRACE();
+        for (i32 idx = global_circuit.selected_elements.start; idx < global_circuit.selected_elements.end; ++idx) {
+                CircuitElement elem = global_circuit.selected_elements.data[idx];
+                if (elem.type == ENN_INPUT_INDICATOR) {
+                        render_rectangle_push(
+                                (f32vec2) { global_circuit.input_indicators.data[elem.index].pos.x - CIRCUIT_INDICATOR_OVERLAY_PADDING, global_circuit.input_indicators.data[elem.index].pos.y - CIRCUIT_INDICATOR_OVERLAY_PADDING },
+                                (f32vec2) { global_circuit.input_indicators.data[elem.index].pos.x + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_PIN_WIDTH + CIRCUIT_INDICATOR_OVERLAY_PADDING, global_circuit.input_indicators.data[elem.index].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT + CIRCUIT_INDICATOR_OVERLAY_PADDING },
+                                CIRCUIT_ELEMENT_OVERLAY_COLOR
+                        );
+                } else if (elem.type == ENN_OUTPUT_INDICATOR) {
+                        render_rectangle_push(
+                                (f32vec2) { global_circuit.output_indicators.data[elem.index].pos.x - CIRCUIT_PIN_WIDTH - CIRCUIT_INDICATOR_OVERLAY_PADDING, global_circuit.output_indicators.data[elem.index].pos.y - CIRCUIT_INDICATOR_OVERLAY_PADDING },
+                                (f32vec2) { global_circuit.output_indicators.data[elem.index].pos.x + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_OVERLAY_PADDING, global_circuit.output_indicators.data[elem.index].pos.y + CIRCUIT_INDICATOR_BODY_HEIGHT + CIRCUIT_INDICATOR_OVERLAY_PADDING },
+                                CIRCUIT_ELEMENT_OVERLAY_COLOR
+                        );
+                } else if (elem.type == ENN_CHIP) {
+                        render_rectangle_push(
+                                (f32vec2) { global_circuit.external_chips.data[elem.index].pos.x - CIRCUIT_PIN_WIDTH - CIRCUIT_CHIP_OVERLAY_PADDING, global_circuit.external_chips.data[elem.index].pos.y - CIRCUIT_CHIP_OVERLAY_PADDING },
+                                (f32vec2) { global_circuit.external_chips.data[elem.index].pos.x + global_circuit.external_chips.data[elem.index].dim.x + CIRCUIT_PIN_WIDTH + CIRCUIT_CHIP_OVERLAY_PADDING, global_circuit.external_chips.data[elem.index].pos.y + global_circuit.external_chips.data[elem.index].dim.y + CIRCUIT_CHIP_OVERLAY_PADDING },
+                                CIRCUIT_ELEMENT_OVERLAY_COLOR
+                        );
+                }
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_render_objects_edit(void) {
+        DEBUG_TRACE();
+        circuit_render_wires_edit();
         circuit_render_pins();
         circuit_render_chips();
-        circuit_render_input_indicators();
-        circuit_render_output_indicators();
+        circuit_render_input_indicators_edit();
+        circuit_render_output_indicators_edit();
+        circuit_render_selection_overlay();
+        DEBUG_UNTRACE();
 }
 
-ENNDEF_PUBLIC InputIndicatorIndex circuit_summon_input_indicator(f32vec2 pos, ENN_CIRCUIT_ELEMENT_COLORS color) {
-        InputIndicator indicator;
-        indicator.pos = pos;
-        indicator.color = color;
+ENNDEF_PUBLIC void circuit_render_objects_execute(void) {
+        DEBUG_TRACE();
+        circuit_render_wires_execute();
+        circuit_render_pins();
+        circuit_render_chips();
+        circuit_render_input_indicators_execute();
+        circuit_render_output_indicators_execute();
+        DEBUG_UNTRACE();
+}
 
-        InternalPin internal_pin;
-        internal_pin.curr_state = false;
-        internal_pin.next_state = false;
+ENNDEF_PUBLIC bool circuit_is_element_selected(CircuitElement elem) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.selected_elements.start; i < global_circuit.selected_elements.end; ++i) 
+                if (elem.type == global_circuit.selected_elements.data[i].type && elem.index == global_circuit.selected_elements.data[i].index) {
+                        DEBUG_UNTRACE();
+                        return true;
+                }
+        return false;
+        DEBUG_UNTRACE();
+}
 
-        vector_push_back(global_circuit.internal_pins, internal_pin);
-        InternalPinIndex internal_idx = vector_size(global_circuit.internal_pins) - 1;
+ENNDEF_PUBLIC void circuit_selection_add_element(CircuitElement elem) {
+        DEBUG_TRACE();
+        if (circuit_is_element_selected(elem)) {
+                DEBUG_UNTRACE();
+                return ;
+        }
 
-        InputIndicatorIndex indicator_idx = vector_size(global_circuit.input_indicators);
+        vector_push_back(global_circuit.selected_elements, elem);
+        DEBUG_UNTRACE();
+}
 
-        ExternalPin ext_pin;
-        ext_pin.internal = internal_idx;
-        ext_pin.pos = (f32vec2){
-                pos.x + CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH,
-                pos.y + max(CIRCUIT_INDICATOR_BODY_HEIGHT, CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5f - CIRCUIT_PIN_HEIGHT * 0.5f
+ENNDEF_PUBLIC void circuit_selection_clear(void) {
+        DEBUG_TRACE();
+        vector_clear(global_circuit.selected_elements);
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_selection_destroy(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.selected_elements.start; i < global_circuit.selected_elements.end; ++i) {
+                switch (global_circuit.selected_elements.data[i].type) {
+                        case ENN_INPUT_INDICATOR:
+                        {
+                                break;
+                        }
+                        case ENN_OUTPUT_INDICATOR:
+                        {
+                                break;
+                        }
+                        case ENN_CHIP:
+                        {
+                                break;
+                        }
+                        case ENN_EXTERNAL_WIRE:
+                        {
+                                break;
+                        }
+                        default: break;
+                }
+        }
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC f32vec2 circuit_magnetize_line(f32vec2 p1, f32vec2 p2, f32 threshold) {
+        f32 dx = p2.x - p1.x;
+        f32 dy = p2.y - p1.y;
+        f32 len = sqrtf(dx * dx + dy * dy);
+
+        if (len == 0.0) return p2;
+
+        f32 angle = atan2f(dy, dx);
+        const f32 snap_interval = 0.785398163;
+        f32 snapped_angle = roundf(angle / snap_interval) * snap_interval;
+
+        if (fabsf(angle - snapped_angle) > threshold * 0.392699082) return p2;
+
+        return (f32vec2) {
+                .x = p1.x + len * cosf(snapped_angle),
+                .y = p1.y + len * sinf(snapped_angle)
         };
-        ext_pin.parent.index = indicator_idx;
-        ext_pin.parent.type = ENN_INPUT_INDICATOR;
-
-        vector_push_back(global_circuit.external_pins, ext_pin);
-        indicator.output_pin = vector_size(global_circuit.external_pins) - 1;
-
-        vector_push_back(global_circuit.input_indicators, indicator);
-        
-        return indicator_idx;
-}
-
-ENNDEF_PUBLIC OutputIndicatorIndex circuit_summon_output_indicator(f32vec2 pos, ENN_CIRCUIT_ELEMENT_COLORS color) {
-        OutputIndicator indicator;
-        indicator.pos = pos;
-        indicator.color = color;
-
-        InternalPin internal_pin;
-        internal_pin.curr_state = false;
-        internal_pin.next_state = false;
-
-        vector_push_back(global_circuit.internal_pins, internal_pin);
-        InternalPinIndex internal_idx = vector_size(global_circuit.internal_pins) - 1;
-
-        OutputIndicatorIndex indicator_idx = vector_size(global_circuit.output_indicators);
-
-        ExternalPin ext_pin;
-        ext_pin.internal = internal_idx;
-        ext_pin.pos = (f32vec2){
-                pos.x - CIRCUIT_PIN_WIDTH,
-                pos.y + max(CIRCUIT_INDICATOR_BODY_HEIGHT, CIRCUIT_INDICATOR_CONNECTOR_HEIGHT) * 0.5f - CIRCUIT_PIN_HEIGHT * 0.5f
-        };
-        ext_pin.parent.index = indicator_idx;
-        ext_pin.parent.type = ENN_OUTPUT_INDICATOR;
-
-        vector_push_back(global_circuit.external_pins, ext_pin);
-        indicator.input_pin = vector_size(global_circuit.external_pins) - 1;
-
-        vector_push_back(global_circuit.output_indicators, indicator);
-        
-        return indicator_idx;
-}
-
-ENNDEF_PUBLIC ExternalChipIndex circuit_summon_chip(f32vec2 pos, BlueprintChipIndex blueprint) {
-        ExternalChip chip;
-        chip.blueprint = blueprint;
-        chip.pos = pos;
-        
-        BlueprintChip* bp = &global_circuit.blueprints.data[blueprint];
-
-        f32 max_pins = max(bp -> num_inputs, bp -> num_outputs);
-        chip.dim = (f32vec2){ 40.0f, max_pins * (CIRCUIT_PIN_HEIGHT + CIRCUIT_CHIP_PIN_PADDING) + CIRCUIT_CHIP_PIN_PADDING };
-
-        ExternalChipIndex chip_idx = vector_size(global_circuit.external_chips);
-
-        for (i32 i = 0; i < bp -> num_inputs; ++i) {
-                InternalPin internal_pin;
-                internal_pin.curr_state = false;
-                internal_pin.next_state = false;
-                vector_push_back(global_circuit.internal_pins, internal_pin);
-                InternalPinIndex internal_idx = vector_size(global_circuit.internal_pins) - 1;
-
-                ExternalPin ext_pin;
-                ext_pin.internal = internal_idx;
-                ext_pin.pos = (f32vec2){
-                        pos.x - CIRCUIT_PIN_WIDTH,
-                        pos.y + CIRCUIT_CHIP_PIN_PADDING + i * (CIRCUIT_PIN_HEIGHT + CIRCUIT_CHIP_PIN_PADDING)
-                };
-                ext_pin.parent.index = chip_idx;
-                ext_pin.parent.type = ENN_CHIP;
-                vector_push_back(global_circuit.external_pins, ext_pin);
-        }
-
-        for (i32 i = 0; i < bp -> num_outputs; ++i) {
-                InternalPin internal_pin;
-                internal_pin.curr_state = false;
-                internal_pin.next_state = false;
-                vector_push_back(global_circuit.internal_pins, internal_pin);
-                InternalPinIndex internal_idx = vector_size(global_circuit.internal_pins) - 1;
-
-                ExternalPin ext_pin;
-                ext_pin.internal = internal_idx;
-                ext_pin.pos = (f32vec2){
-                        pos.x + chip.dim.x,
-                        pos.y + CIRCUIT_CHIP_PIN_PADDING + i * (CIRCUIT_PIN_HEIGHT + CIRCUIT_CHIP_PIN_PADDING)
-                };
-                ext_pin.parent.index = chip_idx;
-                ext_pin.parent.type = ENN_CHIP;
-                vector_push_back(global_circuit.external_pins, ext_pin);
-        }
-
-        vector_push_back(global_circuit.external_chips, chip);
-
-        return chip_idx;
-}
-
-ENNDEF_PUBLIC ExternalWireIndex circuit_summon_wire(ExternalPinIndex from, ExternalPinIndex to) {
-        ExternalWire wire;
-        wire.from = from;
-        wire.to = to;
-        wire.anchors.data = NULL;
-        wire.anchors.capacity = 0;
-        wire.anchors.start = 0;
-        wire.anchors.end = 0;
-
-        InternalWire internal_wire;
-        internal_wire.from = global_circuit.external_pins.data[from].internal;
-        internal_wire.to = global_circuit.external_pins.data[to].internal;
-
-        vector_push_back(global_circuit.internal_wires, internal_wire);
-        wire.internal = vector_size(global_circuit.internal_wires) - 1;
-
-        vector_push_back(global_circuit.external_wires, wire);
-        
-        return vector_size(global_circuit.external_wires) - 1;
-}
-
-ENNDEF_PUBLIC void circuit_destroy_wire(ExternalWireIndex index) {
-        InternalWireIndex internal_idx = global_circuit.external_wires.data[index].internal;
-        
-        if (global_circuit.external_wires.data[index].anchors.capacity > 0) {
-                free(global_circuit.external_wires.data[index].anchors.data);
-        }
-
-        InternalWireIndex last_iw = global_circuit.internal_wires.end - 1;
-        vector_remove_at_index(global_circuit.internal_wires, internal_idx);
-        if (internal_idx != last_iw) {
-                for (i32 j = global_circuit.external_wires.start; j < global_circuit.external_wires.end; ++j) {
-                        if (global_circuit.external_wires.data[j].internal == last_iw) {
-                                global_circuit.external_wires.data[j].internal = internal_idx;
-                                break;
-                        }
-                }
-        }
-
-        vector_remove_at_index(global_circuit.external_wires, index);
-}
-
-ENNDEF_PUBLIC void circuit_destroy_input_indicator(InputIndicatorIndex index) {
-        ExternalPinIndex ext_pin = global_circuit.input_indicators.data[index].output_pin;
-        InternalPinIndex int_pin = global_circuit.external_pins.data[ext_pin].internal;
-
-        for (i32 j = global_circuit.external_wires.end - 1; j >= global_circuit.external_wires.start; --j) {
-                if (global_circuit.external_wires.data[j].from == ext_pin || global_circuit.external_wires.data[j].to == ext_pin) {
-                        circuit_destroy_wire(j);
-                }
-        }
-
-        InternalPinIndex last_ip = global_circuit.internal_pins.end - 1;
-        vector_remove_at_index(global_circuit.internal_pins, int_pin);
-        if (int_pin != last_ip) {
-                for (i32 k = global_circuit.external_pins.start; k < global_circuit.external_pins.end; ++k) {
-                        if (global_circuit.external_pins.data[k].internal == last_ip) {
-                                global_circuit.external_pins.data[k].internal = int_pin;
-                                break;
-                        }
-                }
-                for (i32 k = global_circuit.internal_wires.start; k < global_circuit.internal_wires.end; ++k) {
-                        if (global_circuit.internal_wires.data[k].from == last_ip) global_circuit.internal_wires.data[k].from = int_pin;
-                        if (global_circuit.internal_wires.data[k].to == last_ip) global_circuit.internal_wires.data[k].to = int_pin;
-                }
-                for (i32 k = global_circuit.internal_gates.start; k < global_circuit.internal_gates.end; ++k) {
-                        if (global_circuit.internal_gates.data[k].input_a == last_ip) global_circuit.internal_gates.data[k].input_a = int_pin;
-                        if (global_circuit.internal_gates.data[k].input_b == last_ip) global_circuit.internal_gates.data[k].input_b = int_pin;
-                        if (global_circuit.internal_gates.data[k].output == last_ip) global_circuit.internal_gates.data[k].output = int_pin;
-                }
-        }
-
-        ExternalPinIndex last_ep = global_circuit.external_pins.end - 1;
-        vector_remove_at_index(global_circuit.external_pins, ext_pin);
-        if (ext_pin != last_ep) {
-                for (i32 k = global_circuit.external_wires.start; k < global_circuit.external_wires.end; ++k) {
-                        if (global_circuit.external_wires.data[k].from == last_ep) global_circuit.external_wires.data[k].from = ext_pin;
-                        if (global_circuit.external_wires.data[k].to == last_ep) global_circuit.external_wires.data[k].to = ext_pin;
-                }
-                for (i32 k = global_circuit.input_indicators.start; k < global_circuit.input_indicators.end; ++k) {
-                        if (global_circuit.input_indicators.data[k].output_pin == last_ep) {
-                                global_circuit.input_indicators.data[k].output_pin = ext_pin;
-                                break;
-                        }
-                }
-                for (i32 k = global_circuit.output_indicators.start; k < global_circuit.output_indicators.end; ++k) {
-                        if (global_circuit.output_indicators.data[k].input_pin == last_ep) {
-                                global_circuit.output_indicators.data[k].input_pin = ext_pin;
-                                break;
-                        }
-                }
-        }
-
-        InputIndicatorIndex last_ind = global_circuit.input_indicators.end - 1;
-        vector_remove_at_index(global_circuit.input_indicators, index);
-        if (index != last_ind) {
-                for (i32 k = global_circuit.external_pins.start; k < global_circuit.external_pins.end; ++k) {
-                        if (global_circuit.external_pins.data[k].parent.type == ENN_INPUT_INDICATOR && global_circuit.external_pins.data[k].parent.index == last_ind) {
-                                global_circuit.external_pins.data[k].parent.index = index;
-                                break;
-                        }
-                }
-        }
-}
-
-ENNDEF_PUBLIC void circuit_destroy_output_indicator(OutputIndicatorIndex index) {
-        ExternalPinIndex ext_pin = global_circuit.output_indicators.data[index].input_pin;
-        InternalPinIndex int_pin = global_circuit.external_pins.data[ext_pin].internal;
-
-        for (i32 j = global_circuit.external_wires.end - 1; j >= global_circuit.external_wires.start; --j) {
-                if (global_circuit.external_wires.data[j].from == ext_pin || global_circuit.external_wires.data[j].to == ext_pin) {
-                        circuit_destroy_wire(j);
-                }
-        }
-
-        InternalPinIndex last_ip = global_circuit.internal_pins.end - 1;
-        vector_remove_at_index(global_circuit.internal_pins, int_pin);
-        if (int_pin != last_ip) {
-                for (i32 k = global_circuit.external_pins.start; k < global_circuit.external_pins.end; ++k) {
-                        if (global_circuit.external_pins.data[k].internal == last_ip) {
-                                global_circuit.external_pins.data[k].internal = int_pin;
-                                break;
-                        }
-                }
-                for (i32 k = global_circuit.internal_wires.start; k < global_circuit.internal_wires.end; ++k) {
-                        if (global_circuit.internal_wires.data[k].from == last_ip) global_circuit.internal_wires.data[k].from = int_pin;
-                        if (global_circuit.internal_wires.data[k].to == last_ip) global_circuit.internal_wires.data[k].to = int_pin;
-                }
-                for (i32 k = global_circuit.internal_gates.start; k < global_circuit.internal_gates.end; ++k) {
-                        if (global_circuit.internal_gates.data[k].input_a == last_ip) global_circuit.internal_gates.data[k].input_a = int_pin;
-                        if (global_circuit.internal_gates.data[k].input_b == last_ip) global_circuit.internal_gates.data[k].input_b = int_pin;
-                        if (global_circuit.internal_gates.data[k].output == last_ip) global_circuit.internal_gates.data[k].output = int_pin;
-                }
-        }
-
-        ExternalPinIndex last_ep = global_circuit.external_pins.end - 1;
-        vector_remove_at_index(global_circuit.external_pins, ext_pin);
-        if (ext_pin != last_ep) {
-                for (i32 k = global_circuit.external_wires.start; k < global_circuit.external_wires.end; ++k) {
-                        if (global_circuit.external_wires.data[k].from == last_ep) global_circuit.external_wires.data[k].from = ext_pin;
-                        if (global_circuit.external_wires.data[k].to == last_ep) global_circuit.external_wires.data[k].to = ext_pin;
-                }
-                for (i32 k = global_circuit.input_indicators.start; k < global_circuit.input_indicators.end; ++k) {
-                        if (global_circuit.input_indicators.data[k].output_pin == last_ep) {
-                                global_circuit.input_indicators.data[k].output_pin = ext_pin;
-                                break;
-                        }
-                }
-                for (i32 k = global_circuit.output_indicators.start; k < global_circuit.output_indicators.end; ++k) {
-                        if (global_circuit.output_indicators.data[k].input_pin == last_ep) {
-                                global_circuit.output_indicators.data[k].input_pin = ext_pin;
-                                break;
-                        }
-                }
-        }
-
-        OutputIndicatorIndex last_ind = global_circuit.output_indicators.end - 1;
-        vector_remove_at_index(global_circuit.output_indicators, index);
-        if (index != last_ind) {
-                for (i32 k = global_circuit.external_pins.start; k < global_circuit.external_pins.end; ++k) {
-                        if (global_circuit.external_pins.data[k].parent.type == ENN_OUTPUT_INDICATOR && global_circuit.external_pins.data[k].parent.index == last_ind) {
-                                global_circuit.external_pins.data[k].parent.index = index;
-                                break;
-                        }
-                }
-        }
-}
-
-ENNDEF_PUBLIC void circuit_destroy_chip(ExternalChipIndex index) {
-        for (i32 i = global_circuit.external_pins.end - 1; i >= global_circuit.external_pins.start; --i) {
-                if (global_circuit.external_pins.data[i].parent.type == ENN_CHIP && global_circuit.external_pins.data[i].parent.index == index) {
-                        ExternalPinIndex ext_pin = i;
-                        InternalPinIndex int_pin = global_circuit.external_pins.data[i].internal;
-
-                        for (i32 j = global_circuit.external_wires.end - 1; j >= global_circuit.external_wires.start; --j) {
-                                if (global_circuit.external_wires.data[j].from == ext_pin || global_circuit.external_wires.data[j].to == ext_pin) {
-                                        circuit_destroy_wire(j);
-                                }
-                        }
-
-                        InternalPinIndex last_ip = global_circuit.internal_pins.end - 1;
-                        vector_remove_at_index(global_circuit.internal_pins, int_pin);
-                        if (int_pin != last_ip) {
-                                for (i32 k = global_circuit.external_pins.start; k < global_circuit.external_pins.end; ++k) {
-                                        if (global_circuit.external_pins.data[k].internal == last_ip) {
-                                                global_circuit.external_pins.data[k].internal = int_pin;
-                                                break;
-                                        }
-                                }
-                                for (i32 k = global_circuit.internal_wires.start; k < global_circuit.internal_wires.end; ++k) {
-                                        if (global_circuit.internal_wires.data[k].from == last_ip) global_circuit.internal_wires.data[k].from = int_pin;
-                                        if (global_circuit.internal_wires.data[k].to == last_ip) global_circuit.internal_wires.data[k].to = int_pin;
-                                }
-                                for (i32 k = global_circuit.internal_gates.start; k < global_circuit.internal_gates.end; ++k) {
-                                        if (global_circuit.internal_gates.data[k].input_a == last_ip) global_circuit.internal_gates.data[k].input_a = int_pin;
-                                        if (global_circuit.internal_gates.data[k].input_b == last_ip) global_circuit.internal_gates.data[k].input_b = int_pin;
-                                        if (global_circuit.internal_gates.data[k].output == last_ip) global_circuit.internal_gates.data[k].output = int_pin;
-                                }
-                        }
-
-                        ExternalPinIndex last_ep = global_circuit.external_pins.end - 1;
-                        vector_remove_at_index(global_circuit.external_pins, ext_pin);
-                        if (ext_pin != last_ep) {
-                                for (i32 k = global_circuit.external_wires.start; k < global_circuit.external_wires.end; ++k) {
-                                        if (global_circuit.external_wires.data[k].from == last_ep) global_circuit.external_wires.data[k].from = ext_pin;
-                                        if (global_circuit.external_wires.data[k].to == last_ep) global_circuit.external_wires.data[k].to = ext_pin;
-                                }
-                                for (i32 k = global_circuit.input_indicators.start; k < global_circuit.input_indicators.end; ++k) {
-                                        if (global_circuit.input_indicators.data[k].output_pin == last_ep) {
-                                                global_circuit.input_indicators.data[k].output_pin = ext_pin;
-                                                break;
-                                        }
-                                }
-                                for (i32 k = global_circuit.output_indicators.start; k < global_circuit.output_indicators.end; ++k) {
-                                        if (global_circuit.output_indicators.data[k].input_pin == last_ep) {
-                                                global_circuit.output_indicators.data[k].input_pin = ext_pin;
-                                                break;
-                                        }
-                                }
-                        }
-                }
-        }
-
-        ExternalChipIndex last_chip = global_circuit.external_chips.end - 1;
-        vector_remove_at_index(global_circuit.external_chips, index);
-        if (index != last_chip) {
-                for (i32 k = global_circuit.external_pins.start; k < global_circuit.external_pins.end; ++k) {
-                        if (global_circuit.external_pins.data[k].parent.type == ENN_CHIP && global_circuit.external_pins.data[k].parent.index == last_chip) {
-                                global_circuit.external_pins.data[k].parent.index = index;
-                        }
-                }
-        }
-}
-
-ENNDEF_PUBLIC void circuit_move_input_indicator(InputIndicatorIndex index, f32vec2 new_pos) {
-        f32vec2 delta = {
-                new_pos.x - global_circuit.input_indicators.data[index].pos.x,
-                new_pos.y - global_circuit.input_indicators.data[index].pos.y
-        };
-        
-        global_circuit.input_indicators.data[index].pos = new_pos;
-        
-        ExternalPinIndex pin_idx = global_circuit.input_indicators.data[index].output_pin;
-        global_circuit.external_pins.data[pin_idx].pos.x += delta.x;
-        global_circuit.external_pins.data[pin_idx].pos.y += delta.y;
-}
-
-ENNDEF_PUBLIC void circuit_move_output_indicator(OutputIndicatorIndex index, f32vec2 new_pos) {
-        f32vec2 delta = {
-                new_pos.x - global_circuit.output_indicators.data[index].pos.x,
-                new_pos.y - global_circuit.output_indicators.data[index].pos.y
-        };
-        
-        global_circuit.output_indicators.data[index].pos = new_pos;
-        
-        ExternalPinIndex pin_idx = global_circuit.output_indicators.data[index].input_pin;
-        global_circuit.external_pins.data[pin_idx].pos.x += delta.x;
-        global_circuit.external_pins.data[pin_idx].pos.y += delta.y;
-}
-
-ENNDEF_PUBLIC void circuit_move_chip(ExternalChipIndex index, f32vec2 new_pos) {
-        f32vec2 delta = {
-                new_pos.x - global_circuit.external_chips.data[index].pos.x,
-                new_pos.y - global_circuit.external_chips.data[index].pos.y
-        };
-        
-        global_circuit.external_chips.data[index].pos = new_pos;
-        
-        for (i32 i = global_circuit.external_pins.start; i < global_circuit.external_pins.end; ++i) {
-                if (global_circuit.external_pins.data[i].parent.type == ENN_CHIP && global_circuit.external_pins.data[i].parent.index == index) {
-                        global_circuit.external_pins.data[i].pos.x += delta.x;
-                        global_circuit.external_pins.data[i].pos.y += delta.y;
-                }
-        }
-}
-
-ENNDEF_PUBLIC void circuit_check_hovered_pin(f32vec2 pos) {
-        global_circuit.hovered_pin = global_circuit.external_pins.end;
-        for (i32 i = global_circuit.external_pins.start; i < global_circuit.external_pins.end; ++i) {
-                f32vec2 pin_pos = global_circuit.external_pins.data[i].pos;
-                if (pos.x >= pin_pos.x && pos.x <= pin_pos.x + CIRCUIT_PIN_WIDTH &&
-                    pos.y >= pin_pos.y && pos.y <= pin_pos.y + CIRCUIT_PIN_HEIGHT) {
-                        global_circuit.hovered_pin = i;
-                        break;
-                }
-        }
 }
 
 #endif

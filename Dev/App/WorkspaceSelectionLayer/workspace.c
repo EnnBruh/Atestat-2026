@@ -702,5 +702,6 @@ void workspace_layer_on_event(Event* event) {
                 }
                 default: break;
         }
+        event -> handled = true;
         DEBUG_UNTRACE();
 }

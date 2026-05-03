@@ -70,5 +70,6 @@ typedef enum ENN_TEXT_ALIGN {
 } ENN_TEXT_ALIGN;
 
 ENNDEF_PRIVATE void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align);
+ENNDEF_PRIVATE void render_text_push_width(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, f32 text_width, ENN_TEXT_ALIGN align);
 
 #endif

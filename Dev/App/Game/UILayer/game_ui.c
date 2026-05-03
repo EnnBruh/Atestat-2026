@@ -1,6 +1,9 @@
 #include "layer.h"
+#include "UI/ui.h"
 #include "Game/objects.h"
 #include "Game/MapLayer/map.h"
+
+extern LayerID menu_layer_id;
 
 LayerID game_ui_layer_id;
 
@@ -79,6 +82,13 @@ LayerID game_ui_layer_id;
 #define ENN_UI_BTN_ID_SWITCH_STATE      0x302
 #define ENN_UI_BTN_ID_QUIT              0x303
 
+#define ENN_UI_EDIT_COLOR               0xd79921FF
+#define ENN_UI_EXECUTE_COLOR            0x98971aFF
+
+#define ENN_UI_MODE_LABEL_TEXT          "MODE: "
+#define ENN_UI_MODE_EDIT_TEXT           "EDIT"
+#define ENN_UI_MODE_EXECUTE_TEXT        "EXECUTE"
+
 static const i32vec4 ENN_UI_SPRITE_TOGGLE    = { 83, 3, 91, 12 };
 static const i32vec4 ENN_UI_SPRITE_IND       = { 1, 240, 24, 255 };
 static const i32vec4 ENN_UI_SPRITE_CHIP      = { 65, 144, 89, 164 };
@@ -111,7 +121,6 @@ static UITextButtonList text_buttons;
 static f32 text_btn_base_x[ENN_UI_TEXT_BTN_COUNT];
 
 void game_ui_layer_init(void) {
-        DEBUG_TRACE();
         menu_expanded = true;
         menu_offset_x = 0.0;
         hovered_button_id = 0;
@@ -125,21 +134,21 @@ void game_ui_layer_init(void) {
                         (UITextButtonData) {
                                 .id             = ENN_UI_BTN_ID_SAVE_CIRCUIT,
                                 .pos            = { left_x, ENN_UI_TEXT_BTN_START_Y },
-                                .color          = 0xFFFFFFFF,
+                                .color          = ENN_UI_TITLE_COLOR,
                                 .text           = ENN_UI_TEXT_SAVE,
                                 .text_height    = ENN_UI_TEXT_BTN_TEXT_HEIGHT
                         },
                         (UITextButtonData) {
                                 .id             = ENN_UI_BTN_ID_COMPILE_CIRCUIT,
                                 .pos            = { left_x, ENN_UI_TEXT_BTN_START_Y + ENN_UI_TEXT_BTN_SPACING },
-                                .color          = 0xFFFFFFFF,
+                                .color          = ENN_UI_TITLE_COLOR,
                                 .text           = ENN_UI_TEXT_COMPILE,
                                 .text_height    = ENN_UI_TEXT_BTN_TEXT_HEIGHT
                         },
                         (UITextButtonData) {
                                 .id             = ENN_UI_BTN_ID_SWITCH_STATE,
                                 .pos            = { left_x, ENN_UI_TEXT_BTN_START_Y + ENN_UI_TEXT_BTN_SPACING * 2 },
-                                .color          = 0xFFFFFFFF,
+                                .color          = ENN_UI_TITLE_COLOR,
                                 .text           = ENN_UI_TEXT_MODE,
                                 .text_height    = ENN_UI_TEXT_BTN_TEXT_HEIGHT
                         },
@@ -215,7 +224,6 @@ void game_ui_layer_init(void) {
                 big_buttons[i].dim = (f32vec2) { ENN_UI_BIG_BTN_WIDTH, ENN_UI_BIG_BTN_HEIGHT };
                 big_buttons[i].color = ENN_UI_BIG_BTN_COLOR;
                 big_buttons[i].sprite = &big_sprites[i];
-
                 
                 i32 num_subs = (i == 2) ? 1 : 6;
                 for (i32 j = 0; j < num_subs; ++j) {
@@ -244,20 +252,16 @@ void game_ui_layer_init(void) {
         big_buttons[2].sprite_dim = (f32vec2) { ENN_UI_BIG_BTN_WIDTH, ENN_UI_BIG_BTN_WIDTH / aspect_chip * ENN_FRAMEBUFF_ASPECT_RATIO };
 
         toggle_sprite = render_sprite_create(&global_render.sprite_sheet, (i32vec2){ ENN_UI_SPRITE_TOGGLE.x, ENN_UI_SPRITE_TOGGLE.y }, (i32vec2){ ENN_UI_SPRITE_TOGGLE.z, ENN_UI_SPRITE_TOGGLE.w });
-        DEBUG_UNTRACE();
 }
 
 void game_ui_layer_term(void) {
-        DEBUG_TRACE();
         ui_text_button_list_term(&text_buttons);
         for (i32 i = 0; i < ENN_UI_BIG_BTN_COUNT; ++i) {
                 vector_destroy(big_buttons[i].sub_buttons);
         }
-        DEBUG_UNTRACE();
 }
 
 void game_ui_layer_on_render(void) {
-        DEBUG_TRACE();
         render_proj_set((f32mat4) {
                 1, 0, 0, 0,
                 0, -1, 0, 0,
@@ -271,7 +275,6 @@ void game_ui_layer_on_render(void) {
                         (f32vec2) { ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x, ENN_UI_MENU_MAX_COORD },
                         ENN_UI_MENU_BKG_COLOR
                 );
-
                 render_rectangle_push(
                         (f32vec2) { ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x - ENN_UI_BORDER_WIDTH, ENN_UI_MENU_MIN_COORD },
                         (f32vec2) { ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x, ENN_UI_MENU_MAX_COORD },
@@ -279,14 +282,12 @@ void game_ui_layer_on_render(void) {
                 );
         }
 
-        f32 toggle_x1 = ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x - ENN_UI_BORDER_WIDTH;
-        
+        f32 toggle_x1 = ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x;
         render_rectangle_push(
                 (f32vec2) { toggle_x1, ENN_UI_TOGGLE_BTN_POS_Y - ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
                 (f32vec2) { toggle_x1 + ENN_UI_TOGGLE_BTN_WIDTH + ENN_UI_BORDER_WIDTH, ENN_UI_TOGGLE_BTN_POS_Y + ENN_UI_TOGGLE_BTN_HEIGHT + ENN_UI_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
                 ENN_UI_BORDER_COLOR
         );
-
         render_rectangle_push(
                 (f32vec2) { toggle_x1, ENN_UI_TOGGLE_BTN_POS_Y },
                 (f32vec2) { toggle_x1 + ENN_UI_TOGGLE_BTN_WIDTH, ENN_UI_TOGGLE_BTN_POS_Y + ENN_UI_TOGGLE_BTN_HEIGHT },
@@ -295,45 +296,36 @@ void game_ui_layer_on_render(void) {
 
         f32 tx = toggle_x1 + ENN_UI_TOGGLE_ICON_OFFSET_X;
         f32 ty = ENN_UI_TOGGLE_BTN_POS_Y + ENN_UI_TOGGLE_BTN_HEIGHT * 0.5;
-        render_sprite_push(
-                (f32vec2) { tx - ENN_UI_TOGGLE_ICON_WIDTH * 0.5, ty - ENN_UI_TOGGLE_ICON_HEIGHT * 0.5 },
-                (f32vec2) { tx + ENN_UI_TOGGLE_ICON_WIDTH * 0.5, ty + ENN_UI_TOGGLE_ICON_HEIGHT * 0.5 },
-                &toggle_sprite
-        );
+        render_sprite_push((f32vec2) { tx - ENN_UI_TOGGLE_ICON_WIDTH * 0.5, ty - ENN_UI_TOGGLE_ICON_HEIGHT * 0.5 }, (f32vec2) { tx + ENN_UI_TOGGLE_ICON_WIDTH * 0.5, ty + ENN_UI_TOGGLE_ICON_HEIGHT * 0.5 }, &toggle_sprite);
 
         if (hovered_button_id == ENN_UI_BTN_ID_TOGGLE) {
-                render_rectangle_push(
-                        (f32vec2) { toggle_x1, ENN_UI_TOGGLE_BTN_POS_Y },
-                        (f32vec2) { toggle_x1 + ENN_UI_TOGGLE_BTN_WIDTH, ENN_UI_TOGGLE_BTN_POS_Y + ENN_UI_TOGGLE_BTN_HEIGHT },
-                        ENN_UI_HOVER_OVERLAY_COLOR
-                );
+                render_rectangle_push((f32vec2) { toggle_x1, ENN_UI_TOGGLE_BTN_POS_Y }, (f32vec2) { toggle_x1 + ENN_UI_TOGGLE_BTN_WIDTH, ENN_UI_TOGGLE_BTN_POS_Y + ENN_UI_TOGGLE_BTN_HEIGHT }, ENN_UI_HOVER_OVERLAY_COLOR);
         }
-
 
         if (menu_offset_x > -ENN_UI_MENU_WIDTH) {
                 f32 center_x = ENN_UI_MENU_MIN_COORD + (ENN_UI_MENU_WIDTH * 0.5) + menu_offset_x;
-                render_text_push(
-                        (f32vec2) { center_x, ENN_UI_TITLE_POS_Y },
-                        (f32vec2) { center_x, ENN_UI_TITLE_POS_Y },
-                        ENN_UI_TITLE_TEXT_1, ENN_UI_TITLE_COLOR, ENN_UI_TITLE_TEXT_HEIGHT_1, ENN_CENTER_ALIGN
-                );
-
-                render_text_push(
-                        (f32vec2) { center_x, ENN_UI_TITLE_POS_Y + ENN_UI_TITLE_SPACING },
-                        (f32vec2) { center_x, ENN_UI_TITLE_POS_Y + ENN_UI_TITLE_SPACING },
-                        ENN_UI_TITLE_TEXT_2, ENN_UI_TITLE_COLOR, ENN_UI_TITLE_TEXT_HEIGHT_2, ENN_CENTER_ALIGN
-                );
+                render_text_push((f32vec2) { center_x, ENN_UI_TITLE_POS_Y }, (f32vec2) { center_x, ENN_UI_TITLE_POS_Y }, ENN_UI_TITLE_TEXT_1, ENN_UI_TITLE_COLOR, ENN_UI_TITLE_TEXT_HEIGHT_1, ENN_CENTER_ALIGN);
+                render_text_push((f32vec2) { center_x, ENN_UI_TITLE_POS_Y + ENN_UI_TITLE_SPACING }, (f32vec2) { center_x, ENN_UI_TITLE_POS_Y + ENN_UI_TITLE_SPACING }, ENN_UI_TITLE_TEXT_2, ENN_UI_TITLE_COLOR, ENN_UI_TITLE_TEXT_HEIGHT_2, ENN_CENTER_ALIGN);
 
                 ui_text_button_list_render(&text_buttons);
 
                 f32 render_text_ratio = ((f32)global_render.font_atlas.char_dim.x / (f32)global_render.font_atlas.char_dim.y);
-                f32 mode_w = 6.0f * text_buttons.list.data[2].dim.y * render_text_ratio;
-                f32vec2 mode_p1 = { text_buttons.list.data[2].pos.x + mode_w, text_buttons.list.data[2].pos.y };
-                f32vec2 mode_p2 = { mode_p1.x, mode_p1.y + text_buttons.list.data[2].dim.y };
-                
-                u32 mode_c = (text_buttons.hover == &text_buttons.list.data[2]) ? text_buttons.button_hover_color : ((global_state.game_state == ENN_EDIT_MODE) ? 0xd79921FF : 0x98971aFF);
-                const char* mode_text = (global_state.game_state == ENN_EDIT_MODE) ? "EDIT" : "EXECUTE";
-                render_text_push(mode_p1, mode_p2, mode_text, mode_c, text_buttons.list.data[2].dim.y, ENN_LEFT_ALIGN);
+                for (i32 i = text_buttons.list.start; i < text_buttons.list.end; ++i) {
+                        UITextButton* btn = &text_buttons.list.data[i];
+                        f32vec2 pos = { btn->pos.x, btn->pos.y };
+
+                        if (btn->id == ENN_UI_BTN_ID_SWITCH_STATE) {
+                                f32 label_w = strlen(ENN_UI_MODE_LABEL_TEXT) * btn->dim.y * render_text_ratio;
+                                f32 start_x = pos.x;
+
+                                render_text_push((f32vec2){ start_x, pos.y }, (f32vec2){ start_x, pos.y }, ENN_UI_MODE_LABEL_TEXT, ENN_UI_TITLE_COLOR, btn->dim.y, ENN_LEFT_ALIGN);
+                                if (global_state.game_state == ENN_EDIT_MODE) {
+                                        render_text_push((f32vec2){ start_x + label_w, pos.y }, (f32vec2){ start_x + label_w, pos.y }, ENN_UI_MODE_EDIT_TEXT, ENN_UI_EDIT_COLOR, btn->dim.y, ENN_LEFT_ALIGN);
+                                } else {
+                                        render_text_push((f32vec2){ start_x + label_w, pos.y }, (f32vec2){ start_x + label_w, pos.y }, ENN_UI_MODE_EXECUTE_TEXT, ENN_UI_EXECUTE_COLOR, btn->dim.y, ENN_LEFT_ALIGN);
+                                }
+                        }
+                }
 
                 for (i32 i = 0; i < ENN_UI_BIG_BTN_COUNT; ++i) {
                         if (active_submenu_index == i) {
@@ -355,7 +347,7 @@ void game_ui_layer_on_render(void) {
                                         ENN_UI_MENU_BKG_COLOR
                                 );
 
-                                for (i32 j = 0; j < big_buttons[i].sub_buttons.end; ++j) {
+                                for (i32 j = big_buttons[i].sub_buttons.start; j < big_buttons[i].sub_buttons.end; ++j) {
                                         UIMenuButton* sub = &big_buttons[i].sub_buttons.data[j];
 
                                         render_rectangle_push(
@@ -425,11 +417,9 @@ void game_ui_layer_on_render(void) {
                         }
                 }
         }
-        DEBUG_UNTRACE();
 }
 
 void game_ui_layer_on_update(f64 dt) {
-        DEBUG_TRACE();
         f32 target_offset = menu_expanded ? 0.0 : -ENN_UI_MENU_WIDTH;
         if (menu_offset_x != target_offset) {
                 f32 dir = (target_offset > menu_offset_x) ? 1.0 : -1.0;
@@ -442,11 +432,9 @@ void game_ui_layer_on_update(f64 dt) {
         for (i32 i = 0; i < ENN_UI_TEXT_BTN_COUNT; ++i) {
                 text_buttons.list.data[i].pos.x = text_btn_base_x[i] + menu_offset_x;
         }
-        DEBUG_UNTRACE();
 }
 
 void game_ui_layer_on_event(Event* event) {
-        DEBUG_TRACE();
         switch (event -> type) {
                 case ENN_INPUT_MOUSE_MOVE_EVENT:
                 {
@@ -477,7 +465,7 @@ void game_ui_layer_on_event(Event* event) {
                         }
 
                         if (!in_submenu) {
-                                f32 toggle_x1 = ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x - ENN_UI_BORDER_WIDTH;
+                                f32 toggle_x1 = ENN_UI_MENU_MIN_COORD + ENN_UI_MENU_WIDTH + menu_offset_x;
                                 f32vec4 toggle_rect = { toggle_x1, ENN_UI_TOGGLE_BTN_POS_Y, ENN_UI_TOGGLE_BTN_WIDTH, ENN_UI_TOGGLE_BTN_HEIGHT };
                                 
                                 if (is_inside_rectangle(ndc, toggle_rect)) {
@@ -487,19 +475,20 @@ void game_ui_layer_on_event(Event* event) {
                         }
 
                         if (menu_expanded && hovered_button_id == 0) {
-                                ui_text_button_list_check_hover(&text_buttons, ndc);
+                                f32vec2 adjusted_ndc = { ndc.x - menu_offset_x, ndc.y };
+                                ui_text_button_list_check_hover(&text_buttons, adjusted_ndc);
                                 if (text_buttons.hover != NULL) {
                                         hovered_button_id = text_buttons.hover -> id;
                                         handled = true;
                                 } else {
                                         if (active_submenu_index != -1) {
                                                 i32 i = active_submenu_index;
-                                                i32 subs = vector_size(big_buttons[i].sub_buttons);
+                                                // i32 subs = vector_size(big_buttons[i].sub_buttons);
                                                 f32vec4 btn_rect = { big_buttons[i].local_pos.x + menu_offset_x, big_buttons[i].local_pos.y, big_buttons[i].dim.x, big_buttons[i].dim.y };
                                                 if (is_inside_rectangle(ndc, btn_rect)) {
                                                         hovered_button_id = big_buttons[i].id;
                                                 } else {
-                                                        for (i32 j = 0; j < subs; ++j) {
+                                                        for (i32 j = big_buttons[i].sub_buttons.start; j < big_buttons[i].sub_buttons.end; ++j) {
                                                                 UIMenuButton* sub = &big_buttons[i].sub_buttons.data[j];
                                                                 f32vec4 sub_rect = { sub->local_pos.x + menu_offset_x, sub->local_pos.y, sub->dim.x, sub->dim.y };
                                                                 if (is_inside_rectangle(ndc, sub_rect)) {
@@ -594,60 +583,44 @@ void game_ui_layer_on_event(Event* event) {
                                                 }
                                         }
                                 } else {
-                                        f32vec2 map_mouse_pos = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+                                        // f32vec2 map_mouse_pos = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+                                        i32 summoned_idx = -1;
+                                        // ENN_CIRCUIT_ELEMENT_TYPE summoned_type = ENN_INPUT_INDICATOR;
+
                                         switch (hovered_button_id) {
                                                 case ENN_UI_BTN_ID_IN_IND_RED:
-                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_RED);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_IN_IND_ORANGE:
-                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_ORANGE);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_IN_IND_YELLOW:
-                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_YELLOW);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_IN_IND_GREEN:
-                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_GREEN);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_IN_IND_BLUE:
-                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_BLUE);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_IN_IND_PURPLE:
-                                                        circuit_summon_input_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_PURPLE);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_OUT_IND_RED:
-                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_RED);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_OUT_IND_ORANGE:
-                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_ORANGE);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_OUT_IND_YELLOW:
-                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_YELLOW);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_OUT_IND_GREEN:
-                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_GREEN);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_OUT_IND_BLUE:
-                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_BLUE);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_OUT_IND_PURPLE:
-                                                        circuit_summon_output_indicator(map_mouse_pos, ENN_INTERNAL_COLOR_PURPLE);
-                                                        active_submenu_index = -1;
                                                         break;
                                                 case ENN_UI_BTN_ID_CHIP_NAND:
-                                                        active_submenu_index = -1;
                                                         break;
                                                 default: break;
+                                        }
+
+                                        if (summoned_idx != -1) {
+
+                                                current_action = ENN_ACTION_MOVING;
+                                                // event -> handled = false;
                                         }
                                 }
                         }
@@ -670,5 +643,4 @@ void game_ui_layer_on_event(Event* event) {
                 }
                 default: break;
         }
-        DEBUG_UNTRACE();
 }

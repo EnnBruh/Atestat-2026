@@ -241,6 +241,80 @@ void render_sprite_flip_horizontal(Sprite* sprite) {
         DEBUG_UNTRACE();
 }
 
+void render_text_push_width(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, f32 text_width, ENN_TEXT_ALIGN align) {
+        DEBUG_TRACE();
+        if (text == NULL) {
+                return ;
+        }
+
+        i32 text_len = strlen(text);
+
+        f32vec2 cursor = top_left;
+        
+        switch (align) {
+                case ENN_LEFT_ALIGN: break;
+                case ENN_RIGHT_ALIGN: 
+                {
+                        cursor.x = bott_right.x - text_len * text_width;
+                        break;
+                }
+                case ENN_CENTER_ALIGN:
+                {
+                        cursor.x = (bott_right.x + top_left.x) * 0.5 - text_len * text_width * 0.5;
+                        break;
+                }
+        }
+
+        for (i32 i = 0; i < text_len; ++i) {
+                char ch = text[i];
+                if (ch < ENN_FONT_ATLAS_FIRST_CHAR || ch > ENN_FONT_ATLAS_LAST_CHAR) continue ;
+
+                if (ch == '\n') {
+                        cursor.y += text_height; cursor.x = top_left.x;
+                        continue ;
+                }
+
+                if (ch == ' ') {
+                        cursor.x += text_width;
+                        continue ;
+                }
+
+                if (ch >= 'a' && ch <= 'z') ch -= ('a' - 'A');
+
+                if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
+                        render_buff_draw();
+
+                Vertex *vert = &(global_render.buff[global_render.buff_size]);
+
+                vert[0].pos = cursor;
+                vert[0].color = color;
+                vert[0].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
+                vert[0].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
+
+                vert[1].pos.x = cursor.x;
+                vert[1].pos.y = cursor.y + text_height;
+                vert[1].color = color;
+                vert[1].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].x;
+                vert[1].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
+
+                vert[2].pos.x = cursor.x + text_width;
+                vert[2].pos.y = cursor.y;
+                vert[2].color = color;
+                vert[2].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
+                vert[2].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].y;
+
+                vert[3].pos.x = cursor.x + text_width;
+                vert[3].pos.y = cursor.y + text_height;
+                vert[3].color = color;
+                vert[3].texture_pos.x = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].z;
+                vert[3].texture_pos.y = global_render.font_atlas.char_sprite[ch - ENN_FONT_ATLAS_FIRST_CHAR].w;
+
+                global_render.buff_size += 4;
+                cursor.x += text_width;
+        }
+        DEBUG_UNTRACE();
+}
+
 void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u32 color, f32 text_height, ENN_TEXT_ALIGN align) {
         DEBUG_TRACE();
         if (text == NULL) {
@@ -319,14 +393,13 @@ void render_text_push(f32vec2 top_left, f32vec2 bott_right, const char* text, u3
 void render_line_push(f32vec2 pos1, f32vec2 pos2, f32 width, u32 color) {
         f32 dx = pos2.x - pos1.x;
         f32 dy = pos2.y - pos1.y;
-        f32 dx_ar = dx * ENN_FRAMEBUFF_ASPECT_RATIO;
-        f32 len = dx_ar * dx_ar + dy * dy;
+        f32 len = dx * dx + dy * dy;
         if (len == 0.0f) return ;
         f32 half = (width * 0.5f) / sqrtf(len);
 
         f32vec2 normal = {
-                .x = -(dy / ENN_FRAMEBUFF_ASPECT_RATIO) * half,
-                .y = dx_ar * half
+                .x = -dy * half,
+                .y = dx * half
         };
 
         if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
@@ -380,11 +453,8 @@ void render_multiline_push(f32vec2* points, i32 count, f32 width, u32 color) {
                 f32 dx2 = p2.x - p1.x;
                 f32 dy2 = p2.y - p1.y;
 
-                f32 dx1_ar = dx1 * ENN_FRAMEBUFF_ASPECT_RATIO;
-                f32 dx2_ar = dx2 * ENN_FRAMEBUFF_ASPECT_RATIO;
-
-                f32 len1 = dx1_ar * dx1_ar + dy1 * dy1;
-                f32 len2 = dx2_ar * dx2_ar + dy2 * dy2;
+                f32 len1 = dx1 * dx1 + dy1 * dy1;
+                f32 len2 = dx2 * dx2 + dy2 * dy2;
 
                 if (len1 == 0.0f || len2 == 0.0f) continue ;
 
@@ -392,13 +462,13 @@ void render_multiline_push(f32vec2* points, i32 count, f32 width, u32 color) {
                 f32 half2 = half_w / sqrtf(len2);
 
                 f32vec2 n1 = {
-                        .x = -(dy1 / ENN_FRAMEBUFF_ASPECT_RATIO) * half1,
-                        .y = dx1_ar * half1
+                        .x = -dy1 * half1,
+                        .y = dx1 * half1
                 };
 
                 f32vec2 n2 = {
-                        .x = -(dy2 / ENN_FRAMEBUFF_ASPECT_RATIO) * half2,
-                        .y = dx2_ar * half2
+                        .x = -dy2 * half2,
+                        .y = dx2 * half2
                 };
 
                 if (global_render.buff_size + 4 > ENN_RENDER_VERTEX_BUFF_SIZE)
