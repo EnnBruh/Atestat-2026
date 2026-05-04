@@ -297,6 +297,48 @@ typedef struct Circuit {
 
 extern Circuit global_circuit;
 
+typedef struct CircuitClipboardInput {
+        InputIndicatorIndex             source;
+        InputIndicatorIndex             pasted;
+        f32vec2                         pos_offset;
+        ENN_CIRCUIT_ELEMENT_COLORS      color;
+        bool                            state : 1;
+} CircuitClipboardInput;
+
+typedef struct CircuitClipboardOutput {
+        OutputIndicatorIndex            source;
+        OutputIndicatorIndex            pasted;
+        f32vec2                         pos_offset;
+        ENN_CIRCUIT_ELEMENT_COLORS      color;
+} CircuitClipboardOutput;
+
+typedef struct CircuitClipboardChip {
+        ExternalChipIndex               source;
+        ExternalChipIndex               pasted;
+        f32vec2                         pos_offset;
+        BlueprintChipIndex              blueprint;
+} CircuitClipboardChip;
+
+typedef struct CircuitClipboardWire {
+        i32                             from_type;
+        i32                             from_index;
+        i32                             from_pin;
+        i32                             to_type;
+        i32                             to_index;
+        i32                             to_pin;
+        ENN_CIRCUIT_ELEMENT_COLORS      color;
+        vector(f32vec2)                 anchor_offsets;
+} CircuitClipboardWire;
+
+typedef struct CircuitClipboard {
+        vector(CircuitClipboardInput)   inputs;
+        vector(CircuitClipboardOutput)  outputs;
+        vector(CircuitClipboardChip)    chips;
+        vector(CircuitClipboardWire)    wires;
+} CircuitClipboard;
+
+extern CircuitClipboard circuit_clipboard;
+
 ENNDEF_PRIVATE void game_ui_register_chip_blueprint(BlueprintChipIndex blueprint);
 
 ENNDEF_PUBLIC char circuit_ascii_lower(char ch) {
@@ -1513,7 +1555,29 @@ ENNDEF_PUBLIC void circuit_destroy_runtime_objects(void) {
         DEBUG_UNTRACE();
 }
 
-ENNDEF_PUBLIC bool circuit_blueprint_endpoint_from_external_pin(ExternalPinIndex pin, bool is_source, i32* parent, i32* pin_slot) {
+typedef struct CircuitCompilePinOrder {
+        i32                             index;
+        f32vec2                         pos;
+} CircuitCompilePinOrder;
+
+ENNDEF_PUBLIC bool circuit_compile_pin_order_less(CircuitCompilePinOrder a, CircuitCompilePinOrder b) {
+        if (a.pos.y < b.pos.y) return true;
+        if (a.pos.y > b.pos.y) return false;
+        if (a.pos.x < b.pos.x) return true;
+        if (a.pos.x > b.pos.x) return false;
+        return a.index < b.index;
+}
+
+ENNDEF_PUBLIC void circuit_compile_sort_pin_order(CircuitCompilePinOrder* order, i32 count) {
+        DEBUG_TRACE();
+        for (i32 i = 0; i < count; ++i)
+                for (i32 j = i + 1; j < count; ++j)
+                        if (circuit_compile_pin_order_less(order[j], order[i]))
+                                swap(order[i], order[j]);
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC bool circuit_blueprint_endpoint_from_external_pin(ExternalPinIndex pin, bool is_source, i32* parent, i32* pin_slot, i32* input_slot_map, i32* output_slot_map) {
         DEBUG_TRACE();
         DEBUG_ASSERT(parent != NULL);
         DEBUG_ASSERT(pin_slot != NULL);
@@ -1524,17 +1588,17 @@ ENNDEF_PUBLIC bool circuit_blueprint_endpoint_from_external_pin(ExternalPinIndex
                 {
                         if (!is_source) break;
                         *parent = CIRCUIT_BLUEPRINT_PARENT_INPUT;
-                        *pin_slot = external_pin -> parent.index;
+                        *pin_slot = input_slot_map != NULL ? input_slot_map[external_pin -> parent.index] : external_pin -> parent.index;
                         DEBUG_UNTRACE();
-                        return true;
+                        return *pin_slot >= 0;
                 }
                 case ENN_OUTPUT_INDICATOR:
                 {
                         if (is_source) break;
                         *parent = CIRCUIT_BLUEPRINT_PARENT_OUTPUT;
-                        *pin_slot = external_pin -> parent.index;
+                        *pin_slot = output_slot_map != NULL ? output_slot_map[external_pin -> parent.index] : external_pin -> parent.index;
                         DEBUG_UNTRACE();
-                        return true;
+                        return *pin_slot >= 0;
                 }
                 case ENN_CHIP:
                 {
@@ -1566,7 +1630,43 @@ ENNDEF_PUBLIC bool circuit_blueprint_endpoint_from_external_pin(ExternalPinIndex
 
 ENNDEF_PUBLIC BlueprintChipIndex circuit_compile_current_to_blueprint(const char* name, ENN_CIRCUIT_ELEMENT_COLORS color) {
         DEBUG_TRACE();
-        BlueprintChipIndex blueprint = circuit_summon_blueprint(name, color, vector_size(global_circuit.input_indicators), vector_size(global_circuit.output_indicators), false);
+        i32 input_count = vector_size(global_circuit.input_indicators);
+        i32 output_count = vector_size(global_circuit.output_indicators);
+        CircuitCompilePinOrder* input_order = input_count > 0 ? calloc(input_count, (sizeof (CircuitCompilePinOrder))) : NULL;
+        CircuitCompilePinOrder* output_order = output_count > 0 ? calloc(output_count, (sizeof (CircuitCompilePinOrder))) : NULL;
+        i32* input_slot_map = global_circuit.input_indicators.end > 0 ? calloc(global_circuit.input_indicators.end, (sizeof (i32))) : NULL;
+        i32* output_slot_map = global_circuit.output_indicators.end > 0 ? calloc(global_circuit.output_indicators.end, (sizeof (i32))) : NULL;
+
+        for (i32 i = 0; i < global_circuit.input_indicators.end; ++i)
+                input_slot_map[i] = -1;
+        for (i32 i = 0; i < global_circuit.output_indicators.end; ++i)
+                output_slot_map[i] = -1;
+
+        for (i32 i = global_circuit.input_indicators.start; i < global_circuit.input_indicators.end; ++i) {
+                i32 slot = i - global_circuit.input_indicators.start;
+                input_order[slot] = (CircuitCompilePinOrder) {
+                        .index = i,
+                        .pos = global_circuit.external_pins.data[global_circuit.input_indicators.data[i].output_pin].pos
+                };
+        }
+
+        for (i32 i = global_circuit.output_indicators.start; i < global_circuit.output_indicators.end; ++i) {
+                i32 slot = i - global_circuit.output_indicators.start;
+                output_order[slot] = (CircuitCompilePinOrder) {
+                        .index = i,
+                        .pos = global_circuit.external_pins.data[global_circuit.output_indicators.data[i].input_pin].pos
+                };
+        }
+
+        circuit_compile_sort_pin_order(input_order, input_count);
+        circuit_compile_sort_pin_order(output_order, output_count);
+
+        for (i32 i = 0; i < input_count; ++i)
+                input_slot_map[input_order[i].index] = i;
+        for (i32 i = 0; i < output_count; ++i)
+                output_slot_map[output_order[i].index] = i;
+
+        BlueprintChipIndex blueprint = circuit_summon_blueprint(name, color, input_count, output_count, false);
         BlueprintChip* bp = &global_circuit.blueprints.data[blueprint];
 
         for (i32 i = global_circuit.external_chips.start; i < global_circuit.external_chips.end; ++i)
@@ -1574,13 +1674,17 @@ ENNDEF_PUBLIC BlueprintChipIndex circuit_compile_current_to_blueprint(const char
 
         for (i32 i = global_circuit.external_wires.start; i < global_circuit.external_wires.end; ++i) {
                 BlueprintWire wire = {0};
-                if (!circuit_blueprint_endpoint_from_external_pin(global_circuit.external_wires.data[i].from, true, &wire.from_sub_chip, &wire.from_pin))
+                if (!circuit_blueprint_endpoint_from_external_pin(global_circuit.external_wires.data[i].from, true, &wire.from_sub_chip, &wire.from_pin, input_slot_map, output_slot_map))
                         continue;
-                if (!circuit_blueprint_endpoint_from_external_pin(global_circuit.external_wires.data[i].to, false, &wire.to_sub_chip, &wire.to_pin))
+                if (!circuit_blueprint_endpoint_from_external_pin(global_circuit.external_wires.data[i].to, false, &wire.to_sub_chip, &wire.to_pin, input_slot_map, output_slot_map))
                         continue;
                 vector_push_back(bp -> wires, wire);
         }
 
+        free(input_order);
+        free(output_order);
+        free(input_slot_map);
+        free(output_slot_map);
         circuit_destroy_runtime_objects();
         current_action = ENN_ACTION_NOTHING;
         DEBUG_UNTRACE();
@@ -1872,8 +1976,9 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
                 if (blueprint == global_circuit.blueprints.end && blueprint_id >= global_circuit.blueprints.start && blueprint_id < global_circuit.blueprints.end)
                         blueprint = blueprint_id;
 
-                if (blueprint != global_circuit.blueprints.end)
+                if (blueprint != global_circuit.blueprints.end) {
                         chip_map[i] = circuit_summon_chip(pos, blueprint);
+                }
         }
 
         for (i32 i = 0; i < wire_count; ++i) {
@@ -2418,6 +2523,263 @@ ENNDEF_PUBLIC void circuit_selection_clear(void) {
         DEBUG_UNTRACE();
 }
 
+ENNDEF_PUBLIC void circuit_selection_select_all(void) {
+        DEBUG_TRACE();
+        circuit_selection_clear();
+
+        for (i32 i = global_circuit.input_indicators.start; i < global_circuit.input_indicators.end; ++i)
+                circuit_selection_add_element((CircuitElement) { .index = i, .type = ENN_INPUT_INDICATOR });
+
+        for (i32 i = global_circuit.output_indicators.start; i < global_circuit.output_indicators.end; ++i)
+                circuit_selection_add_element((CircuitElement) { .index = i, .type = ENN_OUTPUT_INDICATOR });
+
+        for (i32 i = global_circuit.external_chips.start; i < global_circuit.external_chips.end; ++i)
+                circuit_selection_add_element((CircuitElement) { .index = i, .type = ENN_CHIP });
+
+        for (i32 i = global_circuit.external_wires.start; i < global_circuit.external_wires.end; ++i)
+                circuit_selection_add_element((CircuitElement) { .index = i, .type = ENN_EXTERNAL_WIRE });
+
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_clipboard_clear(void) {
+        DEBUG_TRACE();
+        for (i32 i = circuit_clipboard.wires.start; i < circuit_clipboard.wires.end; ++i)
+                vector_destroy(circuit_clipboard.wires.data[i].anchor_offsets);
+
+        vector_clear(circuit_clipboard.inputs);
+        vector_clear(circuit_clipboard.outputs);
+        vector_clear(circuit_clipboard.chips);
+        vector_clear(circuit_clipboard.wires);
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_clipboard_destroy(void) {
+        DEBUG_TRACE();
+        circuit_clipboard_clear();
+        vector_destroy(circuit_clipboard.inputs);
+        vector_destroy(circuit_clipboard.outputs);
+        vector_destroy(circuit_clipboard.chips);
+        vector_destroy(circuit_clipboard.wires);
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC bool circuit_clipboard_has_items(void) {
+        return vector_size(circuit_clipboard.inputs) > 0 ||
+               vector_size(circuit_clipboard.outputs) > 0 ||
+               vector_size(circuit_clipboard.chips) > 0 ||
+               vector_size(circuit_clipboard.wires) > 0;
+}
+
+ENNDEF_PUBLIC void circuit_clipboard_copy(f32vec2 cursor) {
+        DEBUG_TRACE();
+        if (vector_size(global_circuit.selected_elements) <= 0) {
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        circuit_clipboard_clear();
+
+        for (i32 i = global_circuit.selected_elements.start; i < global_circuit.selected_elements.end; ++i) {
+                CircuitElement elem = global_circuit.selected_elements.data[i];
+                switch (elem.type) {
+                        case ENN_INPUT_INDICATOR:
+                        {
+                                InputIndicator* input = &global_circuit.input_indicators.data[elem.index];
+                                CircuitClipboardInput item = {
+                                        .source = elem.index,
+                                        .pasted = -1,
+                                        .pos_offset = { input -> pos.x - cursor.x, input -> pos.y - cursor.y },
+                                        .color = input -> color,
+                                        .state = input -> state
+                                };
+                                vector_push_back(circuit_clipboard.inputs, item);
+                                break;
+                        }
+                        case ENN_OUTPUT_INDICATOR:
+                        {
+                                OutputIndicator* output = &global_circuit.output_indicators.data[elem.index];
+                                CircuitClipboardOutput item = {
+                                        .source = elem.index,
+                                        .pasted = -1,
+                                        .pos_offset = { output -> pos.x - cursor.x, output -> pos.y - cursor.y },
+                                        .color = output -> color
+                                };
+                                vector_push_back(circuit_clipboard.outputs, item);
+                                break;
+                        }
+                        case ENN_CHIP:
+                        {
+                                ExternalChip* chip = &global_circuit.external_chips.data[elem.index];
+                                CircuitClipboardChip item = {
+                                        .source = elem.index,
+                                        .pasted = -1,
+                                        .pos_offset = { chip -> pos.x - cursor.x, chip -> pos.y - cursor.y },
+                                        .blueprint = chip -> blueprint
+                                };
+                                vector_push_back(circuit_clipboard.chips, item);
+                                break;
+                        }
+                        case ENN_EXTERNAL_WIRE:
+                        {
+                                ExternalWire* external_wire = &global_circuit.external_wires.data[elem.index];
+                                CircuitClipboardWire wire;
+                                memset(&wire, 0x0, (sizeof (CircuitClipboardWire)));
+                                wire.color = external_wire -> color;
+
+                                if (!circuit_serial_endpoint_from_external_pin(external_wire -> from, true, &wire.from_type, &wire.from_index, &wire.from_pin))
+                                        break;
+                                if (!circuit_serial_endpoint_from_external_pin(external_wire -> to, false, &wire.to_type, &wire.to_index, &wire.to_pin))
+                                        break;
+
+                                for (i32 j = external_wire -> anchors.start; j < external_wire -> anchors.end; ++j) {
+                                        f32vec2 anchor_offset = {
+                                                .x = external_wire -> anchors.data[j].x - cursor.x,
+                                                .y = external_wire -> anchors.data[j].y - cursor.y
+                                        };
+                                        vector_push_back(wire.anchor_offsets, anchor_offset);
+                                }
+                                vector_push_back(circuit_clipboard.wires, wire);
+                                break;
+                        }
+                        default: break;
+                }
+        }
+
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC ExternalPinIndex circuit_clipboard_pin_from_endpoint(i32 type, i32 index, i32 pin_slot, bool is_source) {
+        DEBUG_TRACE();
+        switch ((ENN_CIRCUIT_ELEMENT_TYPE)type) {
+                case ENN_INPUT_INDICATOR:
+                {
+                        if (!is_source) break;
+                        for (i32 i = circuit_clipboard.inputs.start; i < circuit_clipboard.inputs.end; ++i)
+                                if (circuit_clipboard.inputs.data[i].source == index &&
+                                    circuit_clipboard.inputs.data[i].pasted >= global_circuit.input_indicators.start &&
+                                    circuit_clipboard.inputs.data[i].pasted < global_circuit.input_indicators.end) {
+                                        DEBUG_UNTRACE();
+                                        return global_circuit.input_indicators.data[circuit_clipboard.inputs.data[i].pasted].output_pin;
+                                }
+                        break;
+                }
+                case ENN_OUTPUT_INDICATOR:
+                {
+                        if (is_source) break;
+                        for (i32 i = circuit_clipboard.outputs.start; i < circuit_clipboard.outputs.end; ++i)
+                                if (circuit_clipboard.outputs.data[i].source == index &&
+                                    circuit_clipboard.outputs.data[i].pasted >= global_circuit.output_indicators.start &&
+                                    circuit_clipboard.outputs.data[i].pasted < global_circuit.output_indicators.end) {
+                                        DEBUG_UNTRACE();
+                                        return global_circuit.output_indicators.data[circuit_clipboard.outputs.data[i].pasted].input_pin;
+                                }
+                        break;
+                }
+                case ENN_CHIP:
+                {
+                        for (i32 i = circuit_clipboard.chips.start; i < circuit_clipboard.chips.end; ++i) {
+                                if (circuit_clipboard.chips.data[i].source != index ||
+                                    circuit_clipboard.chips.data[i].pasted < global_circuit.external_chips.start ||
+                                    circuit_clipboard.chips.data[i].pasted >= global_circuit.external_chips.end)
+                                        continue;
+
+                                ExternalChip* chip = &global_circuit.external_chips.data[circuit_clipboard.chips.data[i].pasted];
+                                if (is_source) {
+                                        if (pin_slot >= 0 && pin_slot < vector_size(chip -> output_pins)) {
+                                                DEBUG_UNTRACE();
+                                                return chip -> output_pins.data[chip -> output_pins.start + pin_slot];
+                                        }
+                                } else {
+                                        if (pin_slot >= 0 && pin_slot < vector_size(chip -> input_pins)) {
+                                                DEBUG_UNTRACE();
+                                                return chip -> input_pins.data[chip -> input_pins.start + pin_slot];
+                                        }
+                                }
+                        }
+                        break;
+                }
+                default: break;
+        }
+
+        DEBUG_UNTRACE();
+        return global_circuit.external_pins.end;
+}
+
+ENNDEF_PUBLIC void circuit_clipboard_paste(f32vec2 cursor) {
+        DEBUG_TRACE();
+        circuit_selection_clear();
+
+        if (!circuit_clipboard_has_items()) {
+                DEBUG_UNTRACE();
+                return;
+        }
+
+        bool defer = global_circuit.defer_internal_rebuild;
+        global_circuit.defer_internal_rebuild = true;
+
+        for (i32 i = circuit_clipboard.inputs.start; i < circuit_clipboard.inputs.end; ++i) {
+                CircuitClipboardInput* item = &circuit_clipboard.inputs.data[i];
+                f32vec2 pos = { cursor.x + item -> pos_offset.x, cursor.y + item -> pos_offset.y };
+                item -> pasted = circuit_summon_input_indicator(pos, item -> color);
+                global_circuit.input_indicators.data[item -> pasted].state = item -> state;
+                circuit_selection_add_element((CircuitElement) { .index = item -> pasted, .type = ENN_INPUT_INDICATOR });
+        }
+
+        for (i32 i = circuit_clipboard.outputs.start; i < circuit_clipboard.outputs.end; ++i) {
+                CircuitClipboardOutput* item = &circuit_clipboard.outputs.data[i];
+                f32vec2 pos = { cursor.x + item -> pos_offset.x, cursor.y + item -> pos_offset.y };
+                item -> pasted = circuit_summon_output_indicator(pos, item -> color);
+                circuit_selection_add_element((CircuitElement) { .index = item -> pasted, .type = ENN_OUTPUT_INDICATOR });
+        }
+
+        for (i32 i = circuit_clipboard.chips.start; i < circuit_clipboard.chips.end; ++i) {
+                CircuitClipboardChip* item = &circuit_clipboard.chips.data[i];
+                if (item -> blueprint < global_circuit.blueprints.start || item -> blueprint >= global_circuit.blueprints.end) {
+                        item -> pasted = -1;
+                        continue;
+                }
+
+                f32vec2 pos = { cursor.x + item -> pos_offset.x, cursor.y + item -> pos_offset.y };
+                item -> pasted = circuit_summon_chip(pos, item -> blueprint);
+                circuit_selection_add_element((CircuitElement) { .index = item -> pasted, .type = ENN_CHIP });
+        }
+
+        for (i32 i = circuit_clipboard.wires.start; i < circuit_clipboard.wires.end; ++i) {
+                CircuitClipboardWire* wire = &circuit_clipboard.wires.data[i];
+                ExternalPinIndex from = circuit_clipboard_pin_from_endpoint(wire -> from_type, wire -> from_index, wire -> from_pin, true);
+                ExternalPinIndex to = circuit_clipboard_pin_from_endpoint(wire -> to_type, wire -> to_index, wire -> to_pin, false);
+                if (from == global_circuit.external_pins.end || to == global_circuit.external_pins.end)
+                        continue;
+
+                i32 anchor_count = vector_size(wire -> anchor_offsets);
+                if (anchor_count < 2) anchor_count = 2;
+
+                f32vec2* anchors = calloc(anchor_count, (sizeof (f32vec2)));
+                for (i32 j = 0; j < vector_size(wire -> anchor_offsets); ++j) {
+                        anchors[j] = (f32vec2) {
+                                .x = cursor.x + wire -> anchor_offsets.data[wire -> anchor_offsets.start + j].x,
+                                .y = cursor.y + wire -> anchor_offsets.data[wire -> anchor_offsets.start + j].y
+                        };
+                }
+
+                anchors[0] = circuit_external_pin_center(from);
+                anchors[anchor_count - 1] = circuit_external_pin_center(to);
+
+                ExternalWireIndex pasted = circuit_summon_external_wire(anchors, anchor_count, from, to);
+                if (pasted != global_circuit.external_wires.end) {
+                        global_circuit.external_wires.data[pasted].color = wire -> color;
+                        circuit_selection_add_element((CircuitElement) { .index = pasted, .type = ENN_EXTERNAL_WIRE });
+                }
+                free(anchors);
+        }
+
+        global_circuit.defer_internal_rebuild = defer;
+        if (!global_circuit.defer_internal_rebuild)
+                circuit_rebuild_internal_state();
+        DEBUG_UNTRACE();
+}
+
 ENNDEF_PUBLIC void circuit_selection_pane_start(f32vec2 pos) {
         DEBUG_TRACE();
         selection_pane.start = pos;
@@ -2527,6 +2889,11 @@ ENNDEF_PUBLIC bool circuit_elements_intersect(CircuitElement a, CircuitElement b
                 return false;
         }
 
+        if (a.type == ENN_EXTERNAL_WIRE || b.type == ENN_EXTERNAL_WIRE) {
+                DEBUG_UNTRACE();
+                return false;
+        }
+
         f32vec4 hitbox_a;
         f32vec4 hitbox_b;
         bool has_hitbox_a = circuit_element_hitbox(a, &hitbox_a);
@@ -2534,27 +2901,6 @@ ENNDEF_PUBLIC bool circuit_elements_intersect(CircuitElement a, CircuitElement b
 
         if (has_hitbox_a && has_hitbox_b) {
                 bool intersects = is_intersect_rectangles(hitbox_a, hitbox_b);
-                DEBUG_UNTRACE();
-                return intersects;
-        }
-
-        if (has_hitbox_a && b.type == ENN_EXTERNAL_WIRE) {
-                bool intersects = !circuit_wire_is_connected_to_element(b.index, a) &&
-                                  circuit_wire_intersects_rect(b.index, hitbox_a);
-                DEBUG_UNTRACE();
-                return intersects;
-        }
-
-        if (a.type == ENN_EXTERNAL_WIRE && has_hitbox_b) {
-                bool intersects = !circuit_wire_is_connected_to_element(a.index, b) &&
-                                  circuit_wire_intersects_rect(a.index, hitbox_b);
-                DEBUG_UNTRACE();
-                return intersects;
-        }
-
-        if (a.type == ENN_EXTERNAL_WIRE && b.type == ENN_EXTERNAL_WIRE) {
-                bool intersects = !circuit_wires_share_pin(a.index, b.index) &&
-                                  circuit_wires_intersect(a.index, b.index);
                 DEBUG_UNTRACE();
                 return intersects;
         }
@@ -2602,15 +2948,6 @@ ENNDEF_PUBLIC void circuit_selection_check_collisions(void) {
                         }
                 }
 
-                if (selection_pane.move_states.data[i].colliding) continue;
-                for (i32 j = global_circuit.external_wires.start; j < global_circuit.external_wires.end; ++j) {
-                        CircuitElement other = (CircuitElement) { .index = j, .type = ENN_EXTERNAL_WIRE };
-                        if (!circuit_is_element_selected(other) && circuit_elements_intersect(elem, other)) {
-                                selection_pane.move_states.data[i].colliding = true;
-                                selection_pane.has_collision = true;
-                                break;
-                        }
-                }
         }
 
         DEBUG_UNTRACE();

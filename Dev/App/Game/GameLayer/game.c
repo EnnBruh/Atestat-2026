@@ -9,6 +9,7 @@ LayerID game_layer_id;
 
 static char* game_save_filepath;
 Circuit global_circuit;
+CircuitClipboard circuit_clipboard;
 ENN_GAME_ACTION current_action;
 CircuitSelectionPane selection_pane;
 
@@ -61,6 +62,7 @@ void game_layer_init(void) {
 
 void game_layer_term(void) {
         game_save_current_workspace();
+        circuit_clipboard_destroy();
 }
 
 void game_layer_on_render(void) {
@@ -130,6 +132,15 @@ void game_layer_on_event(Event* event) {
                                         event -> handled = true;
                                 } else if (ctrl_down && data -> key == GLFW_KEY_X) {
                                         game_ui_start_compile();
+                                        event -> handled = true;
+                                } else if (global_state.game_state == ENN_EDIT_MODE && ctrl_down && data -> key == GLFW_KEY_A) {
+                                        circuit_selection_select_all();
+                                        event -> handled = true;
+                                } else if (global_state.game_state == ENN_EDIT_MODE && ctrl_down && data -> key == GLFW_KEY_C) {
+                                        circuit_clipboard_copy(screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y }));
+                                        event -> handled = true;
+                                } else if (global_state.game_state == ENN_EDIT_MODE && ctrl_down && data -> key == GLFW_KEY_V) {
+                                        circuit_clipboard_paste(screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y }));
                                         event -> handled = true;
                                 } else if (data -> key == GLFW_KEY_LEFT_SHIFT || data -> key == GLFW_KEY_RIGHT_SHIFT) {
                                         game_ui_toggle_mode();

@@ -634,6 +634,14 @@ void game_ui_layer_on_render(void) {
                                                 );
                                         }
                                 }
+
+                                if (i == 2) {
+                                        render_rectangle_push(
+                                                (f32vec2) { big_buttons[i].local_pos.x + menu_offset_x - ENN_UI_PADDING, big_buttons[i].local_pos.y - ENN_UI_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO },
+                                                (f32vec2) { big_buttons[i].local_pos.x + menu_offset_x + big_buttons[i].dim.x + ENN_UI_PADDING, big_buttons[i].local_pos.y + big_buttons[i].dim.y + ENN_UI_PADDING * ENN_FRAMEBUFF_ASPECT_RATIO },
+                                                ENN_UI_MENU_BKG_COLOR
+                                        );
+                                }
                         }
 
                         render_rectangle_push(
