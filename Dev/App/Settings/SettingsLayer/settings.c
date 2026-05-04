@@ -54,7 +54,6 @@ void settings_get_init(void) {
 #define DEBUG_MODE_BUTTON_ID     0x001
 #define VSYNC_BUTTON_ID          0x002
 #define FULLSCREEN_BUTTON_ID     0x003
-#define RESOLUTION_BUTTON_ID     0x004
 #define SIM_TPS_BUTTON_ID        0x005
 #define CLOSE_BUTTON_ID          0x006
 

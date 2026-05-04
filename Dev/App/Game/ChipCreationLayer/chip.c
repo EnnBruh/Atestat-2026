@@ -21,19 +21,12 @@ LayerID chip_layer_id;
 #define ENN_CHIP_LAYER_NAME_PLACEHOLDER         "NAME"
 #define ENN_CHIP_LAYER_EMPTY_ERROR              "TYPE A NAME"
 #define ENN_CHIP_LAYER_DUPLICATE_ERROR          "ERROR: Chip Blueprint with the same name already exists"
-#define ENN_CHIP_LAYER_CONFIRM_TEXT             "CREATE BLUEPRINT"
 
 #define ENN_CHIP_LAYER_TITLE_HEIGHT              0.075
 #define ENN_CHIP_LAYER_INPUT_HEIGHT              0.13
 #define ENN_CHIP_LAYER_HINT_HEIGHT               0.04
 #define ENN_CHIP_LAYER_SWATCH_SIZE               0.09
 #define ENN_CHIP_LAYER_SWATCH_SPACING            0.035
-#define ENN_CHIP_LAYER_CONFIRM_X1               -0.26
-#define ENN_CHIP_LAYER_CONFIRM_Y1                0.34
-#define ENN_CHIP_LAYER_CONFIRM_X2                0.26
-#define ENN_CHIP_LAYER_CONFIRM_Y2                0.405
-#define ENN_CHIP_LAYER_CONFIRM_TEXT_HEIGHT       0.04
-#define ENN_CHIP_LAYER_CONFIRM_HOVER_COLOR       0xFFFFFF20
 
 static vector(char) input_string;
 static ENN_CIRCUIT_ELEMENT_COLORS selected_color;
@@ -41,7 +34,6 @@ static ENN_CIRCUIT_ELEMENT_COLORS hovered_color;
 static bool cursor_state;
 static bool empty_name_error;
 static bool duplicate_name_error;
-static bool hovered_confirm_button;
 static f64 last_cursor_change;
 
 ENNDEF_PUBLIC f32vec4 chip_layer_color_rect(ENN_CIRCUIT_ELEMENT_COLORS color) {
@@ -61,7 +53,6 @@ ENNDEF_PUBLIC void chip_layer_finish(void) {
         vector_clear(input_string);
         empty_name_error = false;
         duplicate_name_error = false;
-        hovered_confirm_button = false;
         hovered_color = ENN_INTERNAL_COLOR_LAST;
         DEBUG_UNTRACE();
 }
@@ -75,7 +66,6 @@ void chip_layer_start_compile(void) {
         cursor_state = true;
         empty_name_error = false;
         duplicate_name_error = false;
-        hovered_confirm_button = false;
         last_cursor_change = glfwGetTime();
         DEBUG_UNTRACE();
 }
@@ -87,18 +77,8 @@ void chip_layer_init(void) {
         cursor_state = true;
         empty_name_error = false;
         duplicate_name_error = false;
-        hovered_confirm_button = false;
         last_cursor_change = 0.0;
         DEBUG_UNTRACE();
-}
-
-ENNDEF_PUBLIC f32vec4 chip_layer_confirm_rect(void) {
-        return (f32vec4) {
-                .x = ENN_CHIP_LAYER_CONFIRM_X1,
-                .y = ENN_CHIP_LAYER_CONFIRM_Y1,
-                .z = ENN_CHIP_LAYER_CONFIRM_X2 - ENN_CHIP_LAYER_CONFIRM_X1,
-                .w = ENN_CHIP_LAYER_CONFIRM_Y2 - ENN_CHIP_LAYER_CONFIRM_Y1
-        };
 }
 
 ENNDEF_PUBLIC void chip_layer_try_create(void) {
@@ -194,26 +174,6 @@ void chip_layer_on_render(void) {
                 );
         }
 
-        // f32vec4 confirm_rect = chip_layer_confirm_rect();
-        // render_rectangle_push(
-        //         (f32vec2) { confirm_rect.x - ENN_CHIP_LAYER_BORDER_WIDTH, confirm_rect.y - ENN_CHIP_LAYER_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
-        //         (f32vec2) { confirm_rect.x + confirm_rect.z + ENN_CHIP_LAYER_BORDER_WIDTH, confirm_rect.y + confirm_rect.w + ENN_CHIP_LAYER_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
-        //         ENN_CHIP_LAYER_PANEL_BORDER_COLOR
-        // );
-        // render_rectangle_push(
-        //         (f32vec2) { confirm_rect.x, confirm_rect.y },
-        //         (f32vec2) { confirm_rect.x + confirm_rect.z, confirm_rect.y + confirm_rect.w },
-        //         hovered_confirm_button ? ENN_CHIP_LAYER_CONFIRM_HOVER_COLOR : ENN_CHIP_LAYER_PANEL_COLOR
-        // );
-        // render_text_push(
-        //         (f32vec2) { confirm_rect.x, confirm_rect.y + (confirm_rect.w - ENN_CHIP_LAYER_CONFIRM_TEXT_HEIGHT) * 0.5 },
-        //         (f32vec2) { confirm_rect.x + confirm_rect.z, confirm_rect.y + (confirm_rect.w + ENN_CHIP_LAYER_CONFIRM_TEXT_HEIGHT) * 0.5 },
-        //         ENN_CHIP_LAYER_CONFIRM_TEXT,
-        //         hovered_confirm_button ? ENN_CHIP_LAYER_MUTED_TEXT_COLOR : ENN_CHIP_LAYER_TEXT_COLOR,
-        //         ENN_CHIP_LAYER_CONFIRM_TEXT_HEIGHT,
-        //         ENN_CENTER_ALIGN
-        // );
-
         if (empty_name_error || duplicate_name_error) {
                 render_text_push(
                         (f32vec2) { ENN_CHIP_LAYER_PANEL_X1, 0.415 },
@@ -239,7 +199,6 @@ void chip_layer_on_event(Event* event) {
                         f64vec2* data = event -> data;
                         f32vec2 ndc = screen_to_ndc((f32vec2) { data -> x, data -> y });
                         hovered_color = ENN_INTERNAL_COLOR_LAST;
-                        hovered_confirm_button = is_inside_rectangle(ndc, chip_layer_confirm_rect());
                         for (ENN_CIRCUIT_ELEMENT_COLORS color = 0; color < ENN_INTERNAL_COLOR_LAST; ++color)
                                 if (is_inside_rectangle(ndc, chip_layer_color_rect(color))) {
                                         hovered_color = color;
@@ -252,15 +211,11 @@ void chip_layer_on_event(Event* event) {
                         struct { i32 button, action; }* data = event -> data;
                         if (data -> button == GLFW_MOUSE_BUTTON_LEFT && data -> action == GLFW_PRESS) {
                                 f32vec2 ndc = screen_to_ndc((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
-                                if (is_inside_rectangle(ndc, chip_layer_confirm_rect())) {
-                                        chip_layer_try_create();
-                                } else {
-                                        for (ENN_CIRCUIT_ELEMENT_COLORS color = 0; color < ENN_INTERNAL_COLOR_LAST; ++color)
-                                                if (is_inside_rectangle(ndc, chip_layer_color_rect(color))) {
-                                                        selected_color = color;
-                                                        break;
-                                                }
-                                }
+                                for (ENN_CIRCUIT_ELEMENT_COLORS color = 0; color < ENN_INTERNAL_COLOR_LAST; ++color)
+                                        if (is_inside_rectangle(ndc, chip_layer_color_rect(color))) {
+                                                selected_color = color;
+                                                break;
+                                        }
                         }
                         break;
                 }

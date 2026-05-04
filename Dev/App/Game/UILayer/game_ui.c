@@ -62,7 +62,6 @@ LayerID game_ui_layer_id;
 #define ENN_UI_SAVE_NOTIFICATION_COLOR  0x98971aFF
 
 #define ENN_UI_BTN_ID_TOGGLE            0x001
-#define ENN_UI_BTN_ID_HAMBURGER         0x100
 #define ENN_UI_BTN_ID_IN_IND            0x200
 #define ENN_UI_BTN_ID_OUT_IND           0x201
 #define ENN_UI_BTN_ID_CHIP              0x202

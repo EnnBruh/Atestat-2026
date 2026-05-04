@@ -18,8 +18,6 @@
 #define CIRCUIT_INDICATOR_HARD_BORDER_PADDING           0.75
 #define CIRCUIT_INDICATOR_SOFT_BORDER_PADDING           0.75
 #define CIRCUIT_INDICATOR_HARD_BORDER_COLOR             CIRCUIT_PIN_COLOR
-#define CIRCUIT_INDICATOR_OVERLAY_COLOR                 0xFFFFFF80
-#define CIRCUIT_INDICATOR_OVERLAY_COLLISION_COLOR       0xcc241d80
 #define CIRCUIT_INDICATOR_OVERLAY_PADDING               2
 #define CIRCUIT_INDICATOR_HITBOX_WIDTH                  (CIRCUIT_INDICATOR_BODY_WIDTH + CIRCUIT_INDICATOR_CONNECTOR_WIDTH + CIRCUIT_PIN_WIDTH)
 #define CIRCUIT_INDICATOR_HITBOX_HEIGHT                 (CIRCUIT_INDICATOR_BODY_HEIGHT)
@@ -59,8 +57,6 @@
 #define CIRCUIT_CHIP_NAME_TEXT_COLOR                    0xFFFFFFFF
 #define CIRCUIT_CHIP_PIN_PADDING                        3
 #define CIRCUIT_CHIP_MAX_NAME_LEN                       128
-#define CIRCUIT_CHIP_OVERLAY_COLOR                      0xFFFFFF80
-#define CIRCUIT_CHIP_OVERLAY_COLLISION_COLOR       0xcc241d80
 #define CIRCUIT_CHIP_OVERLAY_PADDING                    2
 
 #define CIRCUIT_SELECTION_BOX_COLOR                     0xFFFFFF50
@@ -352,113 +348,6 @@ ENNDEF_PUBLIC char* circuit_chip_blueprint_filepath(BlueprintChip* blueprint) {
 
         DEBUG_UNTRACE();
         return filepath;
-}
-
-ENNDEF_PUBLIC DataFileNode* circuit_datafile_find_node(DataFile* df, const char* keypath) {
-        DEBUG_TRACE();
-        DEBUG_ASSERT(df != NULL);
-        DEBUG_ASSERT(keypath != NULL);
-
-        DataFileNode* root = df -> root;
-        const char* cursor = keypath;
-        const char* token = cursor;
-        while (*cursor && *cursor != ENN_DATAFILE_KEYPATH_SEPARATOR) ++cursor;
-        i32 len = cursor - token;
-
-        if (!root || strncmp(token, root -> key, len) != 0 || root -> key[len] != '\0') {
-                DEBUG_UNTRACE();
-                return NULL;
-        }
-
-        if (*cursor == ENN_DATAFILE_KEYPATH_SEPARATOR) ++cursor;
-
-        while (*cursor) {
-                token = cursor;
-                while (*cursor && *cursor != ENN_DATAFILE_KEYPATH_SEPARATOR) ++cursor;
-                len = cursor - token;
-
-                if (root -> type != ENN_LIST) {
-                        DEBUG_UNTRACE();
-                        return NULL;
-                }
-
-                bool found = false;
-                for (i32 i = root -> data.children.start; i < root -> data.children.end; ++i) {
-                        if (strncmp(token, root -> data.children.data[i] -> key, len) == 0 && root -> data.children.data[i] -> key[len] == '\0') {
-                                root = root -> data.children.data[i];
-                                found = true;
-                                break;
-                        }
-                }
-
-                if (!found) {
-                        DEBUG_UNTRACE();
-                        return NULL;
-                }
-
-                if (*cursor == ENN_DATAFILE_KEYPATH_SEPARATOR) ++cursor;
-        }
-
-        DEBUG_UNTRACE();
-        return root;
-}
-
-ENNDEF_PUBLIC bool circuit_datafile_read_if_not_empty(DataFile* df, const char* filepath) {
-        DEBUG_TRACE();
-        DEBUG_ASSERT(df != NULL);
-        DEBUG_ASSERT(filepath != NULL);
-
-        datafile_create(df);
-        if (!file_exists(filepath) || file_get_size(filepath) <= 0) {
-                DEBUG_UNTRACE();
-                return false;
-        }
-
-        datafile_read(df, filepath);
-        bool result = df -> root != NULL;
-        DEBUG_UNTRACE();
-        return result;
-}
-
-ENNDEF_PUBLIC bool circuit_datafile_get_i32(DataFile* df, const char* keypath, i32* out) {
-        DEBUG_TRACE();
-        DEBUG_ASSERT(out != NULL);
-        DataFileNode* node = circuit_datafile_find_node(df, keypath);
-        if (node != NULL && node -> type == ENN_INT) {
-                *out = node -> data.int_val;
-                DEBUG_UNTRACE();
-                return true;
-        }
-        DEBUG_UNTRACE();
-        return false;
-}
-
-ENNDEF_PUBLIC bool circuit_datafile_get_f32(DataFile* df, const char* keypath, f32* out) {
-        DEBUG_TRACE();
-        DEBUG_ASSERT(out != NULL);
-        DataFileNode* node = circuit_datafile_find_node(df, keypath);
-        if (node != NULL && node -> type == ENN_REAL) {
-                *out = node -> data.real_val;
-                DEBUG_UNTRACE();
-                return true;
-        }
-        DEBUG_UNTRACE();
-        return false;
-}
-
-ENNDEF_PUBLIC bool circuit_datafile_get_cstring(DataFile* df, const char* keypath, char* out, i32 out_size) {
-        DEBUG_TRACE();
-        DEBUG_ASSERT(out != NULL);
-        DEBUG_ASSERT(out_size > 0);
-        DataFileNode* node = circuit_datafile_find_node(df, keypath);
-        if (node != NULL && node -> type == ENN_STRING) {
-                memset(out, 0, out_size);
-                strncpy(out, node -> data.string_val, out_size - 1);
-                DEBUG_UNTRACE();
-                return true;
-        }
-        DEBUG_UNTRACE();
-        return false;
 }
 
 ENNDEF_PUBLIC f32vec2 circuit_blueprint_chip_dim(BlueprintChipIndex blueprint) {
@@ -988,25 +877,34 @@ ENNDEF_PUBLIC void circuit_save_blueprint_to_disk(BlueprintChipIndex blueprint) 
 ENNDEF_PUBLIC void circuit_load_blueprint_file_shell(const char* filepath) {
         DEBUG_TRACE();
         DataFile df;
-        if (!circuit_datafile_read_if_not_empty(&df, filepath)) {
+        datafile_create(&df);
+        if (!file_exists(filepath) || file_get_size(filepath) <= 0) {
+                datafile_destroy(&df);
+                DEBUG_UNTRACE();
+                return;
+        }
+        datafile_read(&df, filepath);
+        if (df.root == NULL) {
                 datafile_destroy(&df);
                 DEBUG_UNTRACE();
                 return;
         }
 
-        char name[CIRCUIT_CHIP_MAX_NAME_LEN] = {0};
+        char* name = datafile_get_cstring(&df, "Chip|Name");
         i32 color = ENN_INTERNAL_COLOR_RED;
-        i32 inputs = 0;
-        i32 outputs = 0;
 
-        if (circuit_datafile_get_cstring(&df, "Chip|Name", name, (sizeof name)) &&
-            circuit_datafile_get_i32(&df, "Chip|Inputs", &inputs) &&
-            circuit_datafile_get_i32(&df, "Chip|Outputs", &outputs)) {
-                circuit_datafile_get_i32(&df, "Chip|Color", &color);
+        if (name != NULL) {
+                color = datafile_get_i32(&df, "Chip|Color");
                 if (circuit_find_blueprint_by_name(name) == global_circuit.blueprints.end) {
                         if (color < ENN_INTERNAL_COLOR_RED || color >= ENN_INTERNAL_COLOR_LAST)
                                 color = ENN_INTERNAL_COLOR_RED;
-                        circuit_summon_blueprint(name, (ENN_CIRCUIT_ELEMENT_COLORS)color, max(inputs, 0), max(outputs, 0), false);
+                        circuit_summon_blueprint(
+                                name,
+                                (ENN_CIRCUIT_ELEMENT_COLORS)color,
+                                max(datafile_get_i32(&df, "Chip|Inputs"), 0),
+                                max(datafile_get_i32(&df, "Chip|Outputs"), 0),
+                                false
+                        );
                 }
         }
 
@@ -1017,14 +915,21 @@ ENNDEF_PUBLIC void circuit_load_blueprint_file_shell(const char* filepath) {
 ENNDEF_PUBLIC void circuit_load_blueprint_file_contents(const char* filepath) {
         DEBUG_TRACE();
         DataFile df;
-        if (!circuit_datafile_read_if_not_empty(&df, filepath)) {
+        datafile_create(&df);
+        if (!file_exists(filepath) || file_get_size(filepath) <= 0) {
+                datafile_destroy(&df);
+                DEBUG_UNTRACE();
+                return;
+        }
+        datafile_read(&df, filepath);
+        if (df.root == NULL) {
                 datafile_destroy(&df);
                 DEBUG_UNTRACE();
                 return;
         }
 
-        char name[CIRCUIT_CHIP_MAX_NAME_LEN] = {0};
-        if (!circuit_datafile_get_cstring(&df, "Chip|Name", name, (sizeof name))) {
+        char* name = datafile_get_cstring(&df, "Chip|Name");
+        if (name == NULL) {
                 datafile_destroy(&df);
                 DEBUG_UNTRACE();
                 return;
@@ -1042,21 +947,18 @@ ENNDEF_PUBLIC void circuit_load_blueprint_file_contents(const char* filepath) {
         vector_clear(bp -> wires);
 
         char key[CIRCUIT_SERIAL_KEY_MAX];
-        i32 sub_count = 0;
-        i32 wire_count = 0;
-        circuit_datafile_get_i32(&df, "Chip|SubChipCount", &sub_count);
-        circuit_datafile_get_i32(&df, "Chip|WireCount", &wire_count);
+        i32 sub_count = datafile_get_i32(&df, "Chip|SubChipCount");
+        i32 wire_count = datafile_get_i32(&df, "Chip|WireCount");
         if (sub_count < 0) sub_count = 0;
         if (wire_count < 0) wire_count = 0;
 
         for (i32 i = 0; i < sub_count; ++i) {
-                char sub_name[CIRCUIT_CHIP_MAX_NAME_LEN] = {0};
                 i32 sub_id = global_circuit.blueprints.end;
 
                 snprintf(key, (sizeof key), "Chip|SubChips|%d|BlueprintName", i);
-                circuit_datafile_get_cstring(&df, key, sub_name, (sizeof sub_name));
+                char* sub_name = datafile_get_cstring(&df, key);
                 snprintf(key, (sizeof key), "Chip|SubChips|%d|BlueprintId", i);
-                circuit_datafile_get_i32(&df, key, &sub_id);
+                sub_id = datafile_get_i32(&df, key);
 
                 BlueprintChipIndex sub = circuit_find_blueprint_by_name(sub_name);
                 if (sub == global_circuit.blueprints.end && sub_id >= global_circuit.blueprints.start && sub_id < global_circuit.blueprints.end)
@@ -1069,13 +971,13 @@ ENNDEF_PUBLIC void circuit_load_blueprint_file_contents(const char* filepath) {
         for (i32 i = 0; i < wire_count; ++i) {
                 BlueprintWire wire = {0};
                 snprintf(key, (sizeof key), "Chip|Wires|%d|FromSubChip", i);
-                if (!circuit_datafile_get_i32(&df, key, &wire.from_sub_chip)) continue;
+                wire.from_sub_chip = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Chip|Wires|%d|FromPin", i);
-                if (!circuit_datafile_get_i32(&df, key, &wire.from_pin)) continue;
+                wire.from_pin = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Chip|Wires|%d|ToSubChip", i);
-                if (!circuit_datafile_get_i32(&df, key, &wire.to_sub_chip)) continue;
+                wire.to_sub_chip = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Chip|Wires|%d|ToPin", i);
-                if (!circuit_datafile_get_i32(&df, key, &wire.to_pin)) continue;
+                wire.to_pin = datafile_get_i32(&df, key);
 
                 if (circuit_blueprint_endpoint_valid(bp, wire.from_sub_chip, wire.from_pin, true) &&
                     circuit_blueprint_endpoint_valid(bp, wire.to_sub_chip, wire.to_pin, false))
@@ -1853,21 +1755,24 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
         current_action = ENN_ACTION_NOTHING;
 
         DataFile df;
-        if (!circuit_datafile_read_if_not_empty(&df, filepath)) {
+        datafile_create(&df);
+        if (!file_exists(filepath) || file_get_size(filepath) <= 0) {
+                datafile_destroy(&df);
+                DEBUG_UNTRACE();
+                return;
+        }
+        datafile_read(&df, filepath);
+        if (df.root == NULL) {
                 datafile_destroy(&df);
                 DEBUG_UNTRACE();
                 return;
         }
 
         char key[CIRCUIT_SERIAL_KEY_MAX];
-        i32 input_count = 0;
-        i32 output_count = 0;
-        i32 chip_count = 0;
-        i32 wire_count = 0;
-        circuit_datafile_get_i32(&df, "Circuit|InputCount", &input_count);
-        circuit_datafile_get_i32(&df, "Circuit|OutputCount", &output_count);
-        circuit_datafile_get_i32(&df, "Circuit|ChipCount", &chip_count);
-        circuit_datafile_get_i32(&df, "Circuit|WireCount", &wire_count);
+        i32 input_count = datafile_get_i32(&df, "Circuit|InputCount");
+        i32 output_count = datafile_get_i32(&df, "Circuit|OutputCount");
+        i32 chip_count = datafile_get_i32(&df, "Circuit|ChipCount");
+        i32 wire_count = datafile_get_i32(&df, "Circuit|WireCount");
         if (input_count < 0) input_count = 0;
         if (output_count < 0) output_count = 0;
         if (chip_count < 0) chip_count = 0;
@@ -1878,13 +1783,13 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
                 i32 color = ENN_INTERNAL_COLOR_RED;
                 i32 state = 0;
                 snprintf(key, (sizeof key), "Circuit|Inputs|%d|X", i);
-                circuit_datafile_get_f32(&df, key, &pos.x);
+                pos.x = datafile_get_f32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Inputs|%d|Y", i);
-                circuit_datafile_get_f32(&df, key, &pos.y);
+                pos.y = datafile_get_f32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Inputs|%d|Color", i);
-                circuit_datafile_get_i32(&df, key, &color);
+                color = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Inputs|%d|State", i);
-                circuit_datafile_get_i32(&df, key, &state);
+                state = datafile_get_i32(&df, key);
                 if (color < ENN_INTERNAL_COLOR_RED || color >= ENN_INTERNAL_COLOR_LAST)
                         color = ENN_INTERNAL_COLOR_RED;
                 InputIndicatorIndex input = circuit_summon_input_indicator(pos, (ENN_CIRCUIT_ELEMENT_COLORS)color);
@@ -1895,11 +1800,11 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
                 f32vec2 pos = {0};
                 i32 color = ENN_INTERNAL_COLOR_RED;
                 snprintf(key, (sizeof key), "Circuit|Outputs|%d|X", i);
-                circuit_datafile_get_f32(&df, key, &pos.x);
+                pos.x = datafile_get_f32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Outputs|%d|Y", i);
-                circuit_datafile_get_f32(&df, key, &pos.y);
+                pos.y = datafile_get_f32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Outputs|%d|Color", i);
-                circuit_datafile_get_i32(&df, key, &color);
+                color = datafile_get_i32(&df, key);
                 if (color < ENN_INTERNAL_COLOR_RED || color >= ENN_INTERNAL_COLOR_LAST)
                         color = ENN_INTERNAL_COLOR_RED;
                 circuit_summon_output_indicator(pos, (ENN_CIRCUIT_ELEMENT_COLORS)color);
@@ -1918,13 +1823,15 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
                 char blueprint_name[CIRCUIT_CHIP_MAX_NAME_LEN] = {0};
 
                 snprintf(key, (sizeof key), "Circuit|Chips|%d|X", i);
-                circuit_datafile_get_f32(&df, key, &pos.x);
+                pos.x = datafile_get_f32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Chips|%d|Y", i);
-                circuit_datafile_get_f32(&df, key, &pos.y);
+                pos.y = datafile_get_f32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Chips|%d|BlueprintId", i);
-                circuit_datafile_get_i32(&df, key, &blueprint_id);
+                blueprint_id = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Chips|%d|BlueprintName", i);
-                circuit_datafile_get_cstring(&df, key, blueprint_name, (sizeof blueprint_name));
+                char* stored_name = datafile_get_cstring(&df, key);
+                if (stored_name != NULL)
+                        strncpy(blueprint_name, stored_name, (sizeof blueprint_name) - 1);
 
                 BlueprintChipIndex blueprint = circuit_find_blueprint_by_name(blueprint_name);
                 if (blueprint == global_circuit.blueprints.end && blueprint_id >= global_circuit.blueprints.start && blueprint_id < global_circuit.blueprints.end)
@@ -1941,21 +1848,21 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
                 i32 color = ENN_INTERNAL_COLOR_RED;
 
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|FromType", i);
-                if (!circuit_datafile_get_i32(&df, key, &from_type)) continue;
+                from_type = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|FromIndex", i);
-                if (!circuit_datafile_get_i32(&df, key, &from_index)) continue;
+                from_index = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|FromPin", i);
-                if (!circuit_datafile_get_i32(&df, key, &from_pin)) continue;
+                from_pin = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|ToType", i);
-                if (!circuit_datafile_get_i32(&df, key, &to_type)) continue;
+                to_type = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|ToIndex", i);
-                if (!circuit_datafile_get_i32(&df, key, &to_index)) continue;
+                to_index = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|ToPin", i);
-                if (!circuit_datafile_get_i32(&df, key, &to_pin)) continue;
+                to_pin = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|Color", i);
-                circuit_datafile_get_i32(&df, key, &color);
+                color = datafile_get_i32(&df, key);
                 snprintf(key, (sizeof key), "Circuit|Wires|%d|AnchorCount", i);
-                circuit_datafile_get_i32(&df, key, &anchor_count);
+                anchor_count = datafile_get_i32(&df, key);
                 if (anchor_count < 0) anchor_count = 0;
 
                 ExternalPinIndex from = circuit_external_pin_from_serial_endpoint(from_type, from_index, from_pin, true, chip_map, chip_count);
@@ -1968,9 +1875,9 @@ ENNDEF_PUBLIC void circuit_load_workspace(const char* filepath) {
                         anchors = calloc(anchor_count, (sizeof (f32vec2)));
                         for (i32 j = 0; j < anchor_count; ++j) {
                                 snprintf(key, (sizeof key), "Circuit|Wires|%d|Anchors|%d|X", i, j);
-                                circuit_datafile_get_f32(&df, key, &anchors[j].x);
+                                anchors[j].x = datafile_get_f32(&df, key);
                                 snprintf(key, (sizeof key), "Circuit|Wires|%d|Anchors|%d|Y", i, j);
-                                circuit_datafile_get_f32(&df, key, &anchors[j].y);
+                                anchors[j].y = datafile_get_f32(&df, key);
                         }
                 } else {
                         anchor_count = 2;

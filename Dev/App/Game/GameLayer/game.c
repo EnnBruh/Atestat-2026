@@ -1,5 +1,3 @@
-// ==================== Changes to GAME_LAYER.C ====================
-
 #include "layer.h"
 
 #include "Game/MapLayer/map.h"
@@ -275,6 +273,7 @@ void game_layer_on_event(Event* event) {
                                                                         current_action = ENN_ACTION_NOTHING;
                                                                         event -> handled = true;
                                                                 } else {
+                                                                        map = circuit_magnetize_line(input_wire.anchors.data[input_wire.anchors.end - 1], map, ENN_MAGNETIZATION_THRESHOLD);
                                                                         vector_push_back(input_wire.anchors, map);
                                                                         event -> handled = true;
                                                                 }

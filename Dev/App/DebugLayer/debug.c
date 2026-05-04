@@ -27,11 +27,6 @@ void debug_layer_on_render(void) {
                 (f32vec2) { -0.95, -0.9 },
                 fps_buff, 0xFFFFFFFF, 0.05, ENN_LEFT_ALIGN);
 
-        // render_text_push(
-        //         (f32vec2) { -0.95, -0.85 },
-        //         (f32vec2) { -0.95, -0.8  },
-        //         mouse_info, 0xFFFFFFFF, 0.05, ENN_LEFT_ALIGN);
-
         sprintf(vertex_info, "%" PRIi32 " VERTICES DRAWN", global_state.drawn_vertices);
 
         render_text_push(

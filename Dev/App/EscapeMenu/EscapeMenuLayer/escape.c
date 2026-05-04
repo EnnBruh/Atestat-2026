@@ -104,14 +104,12 @@ void escape_menu_layer_on_event(Event* event) {
                                         case RESUME_BUTTON_ID:
                                         {
                                                 global_state.pause = false;
-                                                // layer_set_inactive(blur_layer_id);
                                                 layer_set_inactive(escape_menu_layer_id);
                                                 break;
                                         }
                                         case QUIT_MAINMENU_BUTTON_ID:
                                         {
                                                 global_state.pause = false;
-                                                // layer_set_inactive(blur_layer_id);
                                                 layer_set_active(menu_layer_id);
                                                 layer_set_inactive(escape_menu_layer_id);
                                                 game_stop();
@@ -119,9 +117,7 @@ void escape_menu_layer_on_event(Event* event) {
                                         }
                                         case SETTINGS_BUTTON_ID:
                                         {
-                                                // global_state.pause = false;
                                                 layer_set_active(settings_layer_id);
-                                                // layer_set_inactive(escape_menu_layer_id);
                                                 break;
                                         }
                                         default: break;
@@ -135,7 +131,6 @@ void escape_menu_layer_on_event(Event* event) {
                         struct { i32 key, action; }* data = event -> data;
                         if (data -> key == GLFW_KEY_ESCAPE && data -> action == GLFW_PRESS) {
                                 global_state.pause = false;
-                                // layer_set_inactive(blur_layer_id);
                                 layer_set_inactive(escape_menu_layer_id);
                         }
                         break;

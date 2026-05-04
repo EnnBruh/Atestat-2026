@@ -3,7 +3,6 @@
 LayerID menu_layer_id;
 
 static UITextButtonList buttons;
-static f64 preview_cycle_start;
 
 #define BUILD_BUTTON_ID         0x001
 #define SETTINGS_BUTTON_ID      0x002
@@ -11,7 +10,6 @@ static f64 preview_cycle_start;
 
 void menu_layer_init(void) {
         DEBUG_TRACE();
-        preview_cycle_start = glfwGetTime();
         ui_text_button_list_init(
                 &buttons, ENN_LEFT_ALIGN, 0x505050FF,
                 (UITextButtonData[]) {
@@ -37,10 +35,8 @@ void menu_layer_init(void) {
                                 .text_height    = 0.075
                         }
                 },
-               3 
+               3
         );
-
-                
 
         DEBUG_UNTRACE();
 }
@@ -116,8 +112,6 @@ void menu_layer_on_event(Event* event) {
                                         case BUILD_BUTTON_ID:
                                         {
                                                 layer_set_inactive(menu_layer_id);
-                                                // layer_set_active(map_layer_id);
-                                                // layer_set_active(game_layer_id);
                                                 layer_set_active(workspace_layer_id);
                                                 break;
                                         }

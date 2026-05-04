@@ -73,12 +73,6 @@ signed main(void) {
                 LAYER_ASSIGN(settings)
         });
 
-        // blur_layer_id = window_push_layer(&(Layer) {
-        //         .active = false,
-        //         .priority = 8,
-        //         LAYER_ASSIGN(blur)
-        // });
-
         escape_menu_layer_id = window_push_layer(&(Layer) {
                 .active = false,
                 .priority = 5,

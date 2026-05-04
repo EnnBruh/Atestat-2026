@@ -27,7 +27,6 @@ static bool typing_state;
 static bool cursor_state = true;
 static f64 last_cursor_change;
 static bool name_conflict_error;
-static bool hovered_confirm_button;
 
 static f32 workspace_list_offset;
 static bool is_dragging_scrollbar;
@@ -56,13 +55,10 @@ static f64 last_workspace_click_time;
 #define ENN_SCROLLBAR_BG_COLOR                          0x202020FF
 #define ENN_SCROLLBAR_DRAG_COLOR                        0x808080FF
 #define ENN_SCROLLBAR_HANDLE_COLOR                      0x505050FF
-#define ENN_TYPING_OVERLAY_COLOR                        0x00000080
-#define ENN_PLACEHOLDER_TEXT_COLOR                      0x80808080
 
 #define ENN_SAVE_DATA_FMT                               "LAST SAVE: %Y.%m.%d|%H:%M:%S"
 #define ENN_SAVE_DATA_TEXT_HEIGHT                       0.035
 
-#define ENN_INPUT_STRING_TEXT_HEIGHT                    0.2
 #define ENN_CURSOR_CHANGE_TIME                          0.5
 
 #define ENN_MAIN_BUTTON_COUNT                           4
@@ -88,11 +84,7 @@ static f64 last_workspace_click_time;
 #define ENN_TITLE_TEXT_STRING                           "SELECT A WORKSPACE"
 
 #define ENN_ERROR_TEXT_HEIGHT                           0.05
-#define ENN_ERROR_TEXT_POS_Y1                           0.4
-#define ENN_ERROR_TEXT_POS_Y2                           0.5
 #define ENN_ERROR_TEXT_STRING                           "ERROR: A WORKSPACE WITH THAT NAME ALREADY EXISTS"
-
-#define ENN_PLACEHOLDER_TEXT_STRING                     ""
 
 #define ENN_DOUBLE_CLICK_TIME                           0.3
 
@@ -105,16 +97,9 @@ static f64 last_workspace_click_time;
 #define ENN_WORKSPACE_PANEL_X2                    0.55
 #define ENN_WORKSPACE_PANEL_Y2                    0.32
 #define ENN_WORKSPACE_TITLE_TEXT                  "NEW WORKSPACE"
-#define ENN_WORKSPACE_CONFIRM_TEXT                "CREATE WORKSPACE"
 #define ENN_WORKSPACE_BORDER_WIDTH                0.01
 #define ENN_WORKSPACE_TITLE_HEIGHT                0.075
 #define ENN_WORKSPACE_INPUT_HEIGHT                0.13
-#define ENN_WORKSPACE_CONFIRM_X1                 -0.26
-#define ENN_WORKSPACE_CONFIRM_Y1                  0.18
-#define ENN_WORKSPACE_CONFIRM_X2                  0.26
-#define ENN_WORKSPACE_CONFIRM_Y2                  0.245
-#define ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT         0.04
-#define ENN_WORKSPACE_CONFIRM_HOVER_COLOR         0xFFFFFF20
 
 static const f32vec4 workspaces_box = {
         .x = ENN_WORKSPACES_BOX_X,
@@ -147,17 +132,7 @@ ENNDEF_PUBLIC void workspace_layer_exit_typing_state(void) {
         typing_state = false;
         vector_clear(input_string);
         name_conflict_error = false;
-        hovered_confirm_button = false;
         DEBUG_UNTRACE();
-}
-
-ENNDEF_PUBLIC f32vec4 workspace_layer_confirm_rect(void) {
-        return (f32vec4) {
-                .x = ENN_WORKSPACE_CONFIRM_X1,
-                .y = ENN_WORKSPACE_CONFIRM_Y1,
-                .z = ENN_WORKSPACE_CONFIRM_X2 - ENN_WORKSPACE_CONFIRM_X1,
-                .w = ENN_WORKSPACE_CONFIRM_Y2 - ENN_WORKSPACE_CONFIRM_Y1
-        };
 }
 
 ENNDEF_PUBLIC void workspace_layer_start_typing_state(void) {
@@ -168,7 +143,6 @@ ENNDEF_PUBLIC void workspace_layer_start_typing_state(void) {
         cursor_state = true;
         last_cursor_change = glfwGetTime();
         name_conflict_error = false;
-        hovered_confirm_button = false;
         DEBUG_UNTRACE();
 }
 
@@ -567,26 +541,6 @@ void workspace_layer_on_render(void) {
                         );
                 }
 
-                // f32vec4 confirm_rect = workspace_layer_confirm_rect();
-                // render_rectangle_push(
-                //         (f32vec2) { confirm_rect.x - ENN_WORKSPACE_BORDER_WIDTH, confirm_rect.y - ENN_WORKSPACE_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
-                //         (f32vec2) { confirm_rect.x + confirm_rect.z + ENN_WORKSPACE_BORDER_WIDTH, confirm_rect.y + confirm_rect.w + ENN_WORKSPACE_BORDER_WIDTH * ENN_FRAMEBUFF_ASPECT_RATIO },
-                //         ENN_WORKSPACE_BORDER_COLOR
-                // );
-                // render_rectangle_push(
-                //         (f32vec2) { confirm_rect.x, confirm_rect.y },
-                //         (f32vec2) { confirm_rect.x + confirm_rect.z, confirm_rect.y + confirm_rect.w },
-                //         hovered_confirm_button ? ENN_WORKSPACE_CONFIRM_HOVER_COLOR : ENN_WORKSPACE_PANEL_COLOR
-                // );
-                // render_text_push(
-                //         (f32vec2) { confirm_rect.x, confirm_rect.y + (confirm_rect.w - ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT) * 0.5 },
-                //         (f32vec2) { confirm_rect.x + confirm_rect.z, confirm_rect.y + (confirm_rect.w + ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT) * 0.5 },
-                //         ENN_WORKSPACE_CONFIRM_TEXT,
-                //         hovered_confirm_button ? ENN_TEXT_COLOR_MUTED : ENN_TEXT_COLOR_WHITE,
-                //         ENN_WORKSPACE_CONFIRM_TEXT_HEIGHT,
-                //         ENN_CENTER_ALIGN
-                // );
-
                 if (name_conflict_error) {
                         render_text_push(
                                 (f32vec2) { ENN_WORKSPACE_PANEL_X1, 0.27 },
@@ -621,9 +575,7 @@ void workspace_layer_on_event(Event* event) {
                                                         ENN_WORKSPACE_PANEL_X2 - ENN_WORKSPACE_PANEL_X1,
                                                         ENN_WORKSPACE_PANEL_Y2 - ENN_WORKSPACE_PANEL_Y1
                                                 };
-                                                if (is_inside_rectangle(ndc, workspace_layer_confirm_rect()))
-                                                        workspace_layer_create_current_workspace();
-                                                else if (!is_inside_rectangle(ndc, panel_rect))
+                                                if (!is_inside_rectangle(ndc, panel_rect))
                                                         workspace_layer_exit_typing_state();
                                                 break;
                                         }
@@ -697,9 +649,7 @@ void workspace_layer_on_event(Event* event) {
                         f64vec2* data = event -> data;
                         f32vec2 ndc = screen_to_ndc((f32vec2) { data -> x, data -> y });
 
-                        if (typing_state) {
-                                hovered_confirm_button = is_inside_rectangle(ndc, workspace_layer_confirm_rect());
-                        } else {
+                        if (!typing_state) {
                                 if (is_dragging_scrollbar) {
                                         f32 box_h = workspaces_box.w - workspaces_box.y;
                                         f32 visible_h = box_h - ENN_WORKSPACES_BORDER_WIDTH * 2.0;
