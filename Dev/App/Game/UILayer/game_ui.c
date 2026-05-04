@@ -221,12 +221,12 @@ ENNDEF_PUBLIC void game_ui_summon_indicator_for_move(bool is_input, ENN_CIRCUIT_
 
         if (is_input) {
                 elem = (CircuitElement) {
-                        .index = circuit_summon_input_indicator(map, color),
+                        .index = circuit_summon_input_indicator((f32vec2) { map.x - CIRCUIT_INDICATOR_HITBOX_WIDTH * 0.5, map.y - CIRCUIT_INDICATOR_HITBOX_HEIGHT * 0.5 }, color),
                         .type = ENN_INPUT_INDICATOR
                 };
         } else {
                 elem = (CircuitElement) {
-                        .index = circuit_summon_output_indicator(map, color),
+                        .index = circuit_summon_output_indicator((f32vec2) { map.x + CIRCUIT_PIN_WIDTH - CIRCUIT_INDICATOR_HITBOX_WIDTH * 0.5, map.y - CIRCUIT_INDICATOR_HITBOX_HEIGHT * 0.5 }, color),
                         .type = ENN_OUTPUT_INDICATOR
                 };
         }
@@ -247,8 +247,9 @@ ENNDEF_PUBLIC void game_ui_summon_chip_for_move(BlueprintChipIndex blueprint) {
         }
 
         f32vec2 map = screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y });
+        f32vec2 dim = circuit_blueprint_chip_dim(blueprint);
         CircuitElement elem = {
-                .index = circuit_summon_chip(map, blueprint),
+                .index = circuit_summon_chip((f32vec2) { map.x - dim.x * 0.5, map.y - dim.y * 0.5 }, blueprint),
                 .type = ENN_CHIP
         };
 

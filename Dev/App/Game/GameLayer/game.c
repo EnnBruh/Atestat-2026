@@ -60,6 +60,7 @@ void game_layer_init(void) {
 }
 
 void game_layer_term(void) {
+        game_save_current_workspace();
 }
 
 void game_layer_on_render(void) {
