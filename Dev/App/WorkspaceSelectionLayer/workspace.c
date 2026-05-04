@@ -16,6 +16,30 @@ ENNDEF_PUBLIC ENN_CMP workspace_cmp(WorkspaceData a, WorkspaceData b) {
         return ENN_EQUAL;
 }
 
+ENNDEF_PUBLIC char workspace_ascii_lower(char ch) {
+        if (ch >= 'A' && ch <= 'Z') return ch - 'A' + 'a';
+        return ch;
+}
+
+ENNDEF_PUBLIC bool workspace_names_match(const char* a, const char* b) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(a != NULL);
+        DEBUG_ASSERT(b != NULL);
+
+        while (*a && *b) {
+                if (workspace_ascii_lower(*a) != workspace_ascii_lower(*b)) {
+                        DEBUG_UNTRACE();
+                        return false;
+                }
+                ++a;
+                ++b;
+        }
+
+        bool result = *a == *b;
+        DEBUG_UNTRACE();
+        return result;
+}
+
 static UITextButtonList buttons;
 static vector(WorkspaceData) workspaces;
 static WorkspaceData* selected_workspace;
@@ -108,6 +132,34 @@ static const f32vec4 workspaces_box = {
         .w = ENN_WORKSPACES_BOX_W
 };
 
+ENNDEF_PUBLIC char* workspace_layer_filepath(const char* workspace_name) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(workspace_name != NULL);
+
+        char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
+        sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", workspace_name, ENN_DATAFILE_FILE_EXTENSION);
+        DEBUG_UNTRACE();
+        return path;
+}
+
+ENNDEF_PUBLIC bool workspace_layer_name_exists(const char* workspace_name) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(workspace_name != NULL);
+
+        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
+                if (workspace_names_match(workspaces.data[i].workspace_name, workspace_name)) {
+                        DEBUG_UNTRACE();
+                        return true;
+                }
+        }
+
+        char* path = workspace_layer_filepath(workspace_name);
+        bool exists = file_exists(path);
+        free(path);
+        DEBUG_UNTRACE();
+        return exists;
+}
+
 ENNDEF_PUBLIC void workspace_layer_update_scroll_and_positions(void) {
         DEBUG_TRACE();
         f32 box_h = workspaces_box.w - workspaces_box.y;
@@ -154,24 +206,14 @@ ENNDEF_PUBLIC void workspace_layer_create_current_workspace(void) {
                 return;
         }
 
-        bool conflict = false;
-        for (i32 i = workspaces.start; i < workspaces.end; ++i) {
-                if (strcmp(workspaces.data[i].workspace_name, input_string.data + input_string.start) == 0) {
-                        conflict = true;
-                        break;
-                }
-        }
-
-        if (conflict) {
+        if (workspace_layer_name_exists(input_string.data + input_string.start)) {
                 name_conflict_error = true;
                 DEBUG_UNTRACE();
                 return;
         }
 
         name_conflict_error = false;
-        char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(input_string.data + input_string.start) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
-        sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", input_string.data + input_string.start, ENN_DATAFILE_FILE_EXTENSION);
-
+        char* path = workspace_layer_filepath(input_string.data + input_string.start);
         file_write_cstring(path, "", 0);
 
         WorkspaceData new_ws;
@@ -201,8 +243,7 @@ ENNDEF_PUBLIC void workspace_layer_create_current_workspace(void) {
 ENNDEF_PUBLIC void workspace_layer_delete_selected(void) {
         DEBUG_TRACE();
         if (selected_workspace != NULL) {
-                char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(selected_workspace -> workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
-                sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", selected_workspace -> workspace_name, ENN_DATAFILE_FILE_EXTENSION);
+                char* path = workspace_layer_filepath(selected_workspace -> workspace_name);
                 file_remove(path);
                 free(path);
 
@@ -225,8 +266,7 @@ ENNDEF_PUBLIC void workspace_layer_delete_selected(void) {
 ENNDEF_PUBLIC void workspace_layer_open_selected(void) {
         DEBUG_TRACE();
         if (selected_workspace != NULL) {
-                char* path = calloc(strlen(ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/") + strlen(selected_workspace -> workspace_name) + strlen(ENN_DATAFILE_FILE_EXTENSION) + 1, (sizeof (char)));
-                sprintf(path, ENN_APP_DIRECTORY ENN_DATA_PATH "/Circuits/%s%s", selected_workspace -> workspace_name, ENN_DATAFILE_FILE_EXTENSION);
+                char* path = workspace_layer_filepath(selected_workspace -> workspace_name);
                 game_start(path);
                 free(path);
                 layer_set_inactive(workspace_layer_id);

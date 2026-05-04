@@ -81,12 +81,28 @@ void chip_layer_init(void) {
         DEBUG_UNTRACE();
 }
 
+ENNDEF_PUBLIC bool chip_layer_blueprint_name_exists(const char* name) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(name != NULL);
+
+        if (circuit_find_blueprint_by_name(name) != global_circuit.blueprints.end) {
+                DEBUG_UNTRACE();
+                return true;
+        }
+
+        char* filepath = circuit_chip_blueprint_filepath_from_name(name);
+        bool exists = file_exists(filepath);
+        free(filepath);
+        DEBUG_UNTRACE();
+        return exists;
+}
+
 ENNDEF_PUBLIC void chip_layer_try_create(void) {
         DEBUG_TRACE();
         if (vector_size(input_string) == 0) {
                 empty_name_error = true;
                 duplicate_name_error = false;
-        } else if (circuit_find_blueprint_by_name(input_string.data + input_string.start) != global_circuit.blueprints.end) {
+        } else if (chip_layer_blueprint_name_exists(input_string.data + input_string.start)) {
                 empty_name_error = false;
                 duplicate_name_error = true;
         } else {

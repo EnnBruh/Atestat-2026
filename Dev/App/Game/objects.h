@@ -299,6 +299,32 @@ extern Circuit global_circuit;
 
 ENNDEF_PRIVATE void game_ui_register_chip_blueprint(BlueprintChipIndex blueprint);
 
+ENNDEF_PUBLIC char circuit_ascii_lower(char ch) {
+        if (ch >= 'A' && ch <= 'Z') return ch - 'A' + 'a';
+        return ch;
+}
+
+ENNDEF_PUBLIC bool circuit_cstring_matches(const char* a, const char* b) {
+        DEBUG_TRACE();
+        if (a == NULL || b == NULL) {
+                DEBUG_UNTRACE();
+                return false;
+        }
+
+        while (*a && *b) {
+                if (circuit_ascii_lower(*a) != circuit_ascii_lower(*b)) {
+                        DEBUG_UNTRACE();
+                        return false;
+                }
+                ++a;
+                ++b;
+        }
+
+        bool result = *a == *b;
+        DEBUG_UNTRACE();
+        return result;
+}
+
 ENNDEF_PUBLIC bool circuit_cstring_has_suffix(const char* str, const char* suffix) {
         DEBUG_TRACE();
         if (str == NULL || suffix == NULL) {
@@ -308,7 +334,7 @@ ENNDEF_PUBLIC bool circuit_cstring_has_suffix(const char* str, const char* suffi
 
         i32 str_len = strlen(str);
         i32 suffix_len = strlen(suffix);
-        bool result = str_len >= suffix_len && strcmp(str + str_len - suffix_len, suffix) == 0;
+        bool result = str_len >= suffix_len && circuit_cstring_matches(str + str_len - suffix_len, suffix);
         DEBUG_UNTRACE();
         return result;
 }
@@ -335,17 +361,26 @@ ENNDEF_PUBLIC char* circuit_filename_from_name(const char* name) {
         return filename;
 }
 
-ENNDEF_PUBLIC char* circuit_chip_blueprint_filepath(BlueprintChip* blueprint) {
+ENNDEF_PUBLIC char* circuit_chip_blueprint_filepath_from_name(const char* name) {
         DEBUG_TRACE();
-        DEBUG_ASSERT(blueprint != NULL);
+        DEBUG_ASSERT(name != NULL);
 
-        char* filename = circuit_filename_from_name(blueprint -> name);
+        char* filename = circuit_filename_from_name(name);
         i32 path_len = snprintf(NULL, 0, "%s/%s%s", CIRCUIT_CHIP_DATA_DIRECTORY, filename, ENN_DATAFILE_FILE_EXTENSION) + 1;
         char* filepath = calloc(path_len, (sizeof (char)));
         DEBUG_ASSERT(filepath != NULL);
         snprintf(filepath, path_len, "%s/%s%s", CIRCUIT_CHIP_DATA_DIRECTORY, filename, ENN_DATAFILE_FILE_EXTENSION);
         free(filename);
 
+        DEBUG_UNTRACE();
+        return filepath;
+}
+
+ENNDEF_PUBLIC char* circuit_chip_blueprint_filepath(BlueprintChip* blueprint) {
+        DEBUG_TRACE();
+        DEBUG_ASSERT(blueprint != NULL);
+
+        char* filepath = circuit_chip_blueprint_filepath_from_name(blueprint -> name);
         DEBUG_UNTRACE();
         return filepath;
 }
@@ -771,7 +806,7 @@ ENNDEF_PUBLIC BlueprintChipIndex circuit_find_blueprint_by_name(const char* name
         }
 
         for (i32 i = global_circuit.blueprints.start; i < global_circuit.blueprints.end; ++i)
-                if (strcmp(global_circuit.blueprints.data[i].name, name) == 0) {
+                if (circuit_cstring_matches(global_circuit.blueprints.data[i].name, name)) {
                         DEBUG_UNTRACE();
                         return i;
                 }

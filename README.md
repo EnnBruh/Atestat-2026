@@ -1,7 +1,7 @@
 # Atestat 2026
 A Digital Logic Simulation and Circuit Builder written in C as part of my High School Professional Licence in Computer Science
 
-> **This project is a work in progress**
+> **This project is greatly inspired by (if not entirely based on) Sebastian Lague's [Digital Logic Sim](https://github.com/SebLague/Digital-Logic-Sim.git)**
 
 # Building from source
 This project was made in C using Makefile. We recommend installing the [Git](https://git-scm.com/install/windows) environment for Windows along with [MingW64](https://www.mingw-w64.org/) and placing them in your PATH.
@@ -26,3 +26,6 @@ The dependencies are
 3. STB_image (https://github.com/nothings/stb)
    
 These are present in the `Dev/Dep` directory and are statically linked with the executable so there should be no reason to install them separately.
+
+# Assets
+Some UI Icons are taken from SHMORGUS' [Universal Icon Pack 8x8](https://shmorgus.itch.io/micro-icon-pack)

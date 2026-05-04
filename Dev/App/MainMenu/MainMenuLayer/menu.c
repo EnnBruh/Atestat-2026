@@ -79,7 +79,7 @@ void menu_layer_on_render(void) {
         render_text_push(
                 (f32vec2) { -0.95, 0.9 },
                 (f32vec2) { -0.65, 0.9 },
-                "v3.24.7", 0xFFFFFFFF, 0.05, ENN_LEFT_ALIGN);
+                "v3.24.8", 0xFFFFFFFF, 0.05, ENN_LEFT_ALIGN);
 
         ui_text_button_list_render(&buttons);
 
