@@ -142,6 +142,9 @@ void game_layer_on_event(Event* event) {
                                 } else if (global_state.game_state == ENN_EDIT_MODE && ctrl_down && data -> key == GLFW_KEY_V) {
                                         circuit_clipboard_paste(screen_to_map((f32vec2) { global_state.mouse_pos.x, global_state.mouse_pos.y }));
                                         event -> handled = true;
+                                } else if (global_state.game_state == ENN_EDIT_MODE && ctrl_down && data -> key == GLFW_KEY_G) {
+                                        circuit_selection_snap_to_grid();
+                                        event -> handled = true;
                                 } else if (data -> key == GLFW_KEY_LEFT_SHIFT || data -> key == GLFW_KEY_RIGHT_SHIFT) {
                                         game_ui_toggle_mode();
                                         event -> handled = true;
@@ -232,7 +235,7 @@ void game_layer_on_event(Event* event) {
                                 switch (global_state.game_state) {
                                         case ENN_EDIT_MODE:
                                         {
-                                                bool additive_selection = global_state.is_key_down[GLFW_KEY_LEFT_CONTROL] || global_state.is_key_down[GLFW_KEY_RIGHT_CONTROL];
+                                                bool add_to_selection = global_state.is_key_down[GLFW_KEY_LEFT_CONTROL] || global_state.is_key_down[GLFW_KEY_RIGHT_CONTROL];
                                                 switch (current_action) {
                                                         case ENN_ACTION_NOTHING:
                                                         {
@@ -254,7 +257,7 @@ void game_layer_on_event(Event* event) {
                                                                         CircuitElement elem;
                                                                         if (circuit_find_selectable_at_pos(map, &elem)) {
                                                                                 if (!circuit_is_element_selected(elem)) {
-                                                                                        if (!additive_selection) circuit_selection_clear();
+                                                                                        if (!add_to_selection) circuit_selection_clear();
                                                                                         circuit_selection_add_element(elem);
                                                                                         circuit_selection_add_connected_wires();
                                                                                 }
@@ -262,7 +265,7 @@ void game_layer_on_event(Event* event) {
                                                                                 current_action = ENN_ACTION_MOVING;
                                                                                 event -> handled = true;
                                                                         } else {
-                                                                                if (!additive_selection) circuit_selection_clear();
+                                                                                if (!add_to_selection) circuit_selection_clear();
                                                                                 circuit_selection_pane_start(map);
                                                                                 current_action = ENN_ACTION_SELECTING;
                                                                                 event -> handled = true;
@@ -299,6 +302,7 @@ void game_layer_on_event(Event* event) {
                                         }
                                         case ENN_EXECUTE_MODE:
                                         {
+                                                if (global_state.is_key_down[GLFW_KEY_SPACE]) break;
                                                 if (circuit_toggle_input_indicator_at_pos(map))
                                                         event -> handled = true;
                                                 break;

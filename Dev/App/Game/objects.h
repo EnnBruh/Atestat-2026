@@ -65,8 +65,8 @@
 #define CIRCUIT_SERIAL_KEY_MAX                          256
 #define CIRCUIT_SERIAL_PATH_MAX                         512
 
-#define CIRCUIT_ELEMENT_OVERLAY_COLOR                   0xFFFFFF80
-#define CIRCUIT_ELEMENT_OVERLAY_COLLISION_COLOR         0xcc241d80
+#define CIRCUIT_ELEMENT_OVERLAY_COLOR                   0xFFFFFF35
+#define CIRCUIT_ELEMENT_OVERLAY_COLLISION_COLOR         0xcc241d35
 
 #define CIRCUIT_BLUEPRINT_PARENT_INPUT                  -1
 #define CIRCUIT_BLUEPRINT_PARENT_OUTPUT                 -2
@@ -3083,6 +3083,37 @@ ENNDEF_PUBLIC void circuit_move_selection(f32vec2 delta) {
         for (i32 i = global_circuit.selected_elements.start; i < global_circuit.selected_elements.end; ++i)
                 if (global_circuit.selected_elements.data[i].type == ENN_EXTERNAL_WIRE)
                         circuit_move_wire(global_circuit.selected_elements.data[i].index, delta);
+
+        circuit_update_all_wire_endpoints();
+        DEBUG_UNTRACE();
+}
+
+ENNDEF_PUBLIC void circuit_selection_snap_to_grid(void) {
+        DEBUG_TRACE();
+        for (i32 i = global_circuit.selected_elements.start; i < global_circuit.selected_elements.end; ++i) {
+                CircuitElement elem = global_circuit.selected_elements.data[i];
+                switch (elem.type) {
+                        case ENN_INPUT_INDICATOR:
+                        {
+                                InputIndicator* input = &global_circuit.input_indicators.data[elem.index];
+                                circuit_set_input_indicator_pos(elem.index, (f32vec2) { (i32)input -> pos.x, (i32)input -> pos.y });
+                                break;
+                        }
+                        case ENN_OUTPUT_INDICATOR:
+                        {
+                                OutputIndicator* output = &global_circuit.output_indicators.data[elem.index];
+                                circuit_set_output_indicator_pos(elem.index, (f32vec2) { (i32)output -> pos.x, (i32)output -> pos.y });
+                                break;
+                        }
+                        case ENN_CHIP:
+                        {
+                                ExternalChip* chip = &global_circuit.external_chips.data[elem.index];
+                                circuit_set_chip_pos(elem.index, (f32vec2) { (i32)chip -> pos.x, (i32)chip -> pos.y });
+                                break;
+                        }
+                        default: break;
+                }
+        }
 
         circuit_update_all_wire_endpoints();
         DEBUG_UNTRACE();
