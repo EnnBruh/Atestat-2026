@@ -1,3 +1,1 @@
-Dev/Dep/STB/* linguist-vendored
-Dev/Dep/GLAD/* linguist-vendored
-Dev/Dep/GLFW/* linguist-vendored
+Dev/Dep/** linguist-vendored
