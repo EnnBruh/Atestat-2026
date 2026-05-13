@@ -1,10 +1,12 @@
 # Atestat 2026
-A Digital Logic Simulation and Circuit Builder written in C as part of my High School Professional Licence in Computer Science
+A Digital Logic Simulation and Circuit Builder written as part of my High School Professional Licence in Computer Science
 
 > **This project is greatly inspired by (if not entirely based on) Sebastian Lague's [Digital Logic Sim](https://github.com/SebLague/Digital-Logic-Sim.git)**
 
+![Example of a 4BIT-ADDER](Examples/4BIT-ADDER%20Example.png)
+
 # Building from source
-This project was made in C using Makefile. We recommend installing the [Git](https://git-scm.com/install/windows) environment for Windows along with [MingW64](https://www.mingw-w64.org/) and placing them in your PATH.
+This project is written in C using the GNU C Compiler and a Makefile based build system. We recommend installing the [Git](https://git-scm.com/install/windows) environment for Windows along with [MingW64](https://www.mingw-w64.org/) and [Make](https://gnuwin32.sourceforge.net/packages/make.htm) and placing them in your PATH.
 
 After installing you should be able to run
 ```
@@ -20,7 +22,7 @@ make build_release
 Will compile in Release mode.
 
 # Dependencies
-The dependencies are
+This project uses the following libraries for handling graphical contexts and input.
 1. GLFW 3 (https://www.glfw.org/)
 2. OpenGL 3.3 loaded using GLAD (https://glad.dav1d.de/)
 3. STB_image (https://github.com/nothings/stb)
